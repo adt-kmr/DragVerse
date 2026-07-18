@@ -16,8 +16,10 @@ PyYAML>=6.0
 # has a working pure-numpy fallback, so none of these are needed to run or test.
 #   open3d>=0.18.0        # TSDF fusion (reconstruction fast path)
 #   ultralytics>=8.2.0    # YOLO-World 2D segmentation
-#   qai-hub>=0.9.0        # Qualcomm AI Hub export/quantization
 #   pyserial>=3.5         # UNO Q serial bridge
+#
+# The Qualcomm NPU toolchain (qai-hub + torch) lives in requirements-npu.txt — it is a
+# real install target, not a comment, because the AI Hub export path imports torch.
 
 # Development
 black>=24.2.0

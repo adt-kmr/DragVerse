@@ -1300,19 +1300,19 @@ To contribute:
 git checkout -b feature/amazing-feature
 ```
 
-3. Commit changes.
+1. Commit changes.
 
 ```bash
 git commit -m "Add amazing feature"
 ```
 
-4. Push.
+1. Push.
 
 ```bash
 git push origin feature/amazing-feature
 ```
 
-5. Open a Pull Request.
+1. Open a Pull Request.
 
 ---
 
