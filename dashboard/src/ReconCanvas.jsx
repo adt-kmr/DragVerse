@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { Dithering } from "@paper-design/shaders-react";
 
 import { createScene, STAGES } from "./recon.js";
+import { createAperture } from "./aperture.js";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -17,6 +17,8 @@ gsap.registerPlugin(ScrollTrigger);
 export default function ReconCanvas() {
   const trackRef = useRef(null);
   const canvasRef = useRef(null);
+  const apertureRef = useRef(null);
+  const apertureCtl = useRef(null);
   const titleRef = useRef(null);
   const captionRef = useRef(null);
   const readoutRef = useRef(null);
@@ -24,17 +26,28 @@ export default function ReconCanvas() {
   const objectsRef = useRef(null);
   const [phase, setPhase] = useState(0);
   const [atRest, setAtRest] = useState(true);
-  const [reducedMotion] = useState(
-    () => window.matchMedia("(prefers-reduced-motion: reduce)").matches
-  );
 
   useEffect(() => {
     const scene = createScene(canvasRef.current);
     scene.resize();
 
+    const aperture = createAperture(apertureRef.current, "#ff2900");
+    aperture.resize();
+    apertureCtl.current = aperture;
+
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let lastPhase = -1;
     let lastRest = true;
+    let rafId = null;
+    let rafStart = null;
+
+    const spinAperture = (now) => {
+      if (rafStart === null) rafStart = now;
+      aperture.render((now - rafStart) / 1000);
+      rafId = requestAnimationFrame(spinAperture);
+    };
+    if (reduced) aperture.render(0);
+    else rafId = requestAnimationFrame(spinAperture);
 
     const paint = (progress) => {
       const state = scene.render(progress);
@@ -58,10 +71,18 @@ export default function ReconCanvas() {
       const onResize = () => {
         scene.resize();
         paint(1);
+        aperture.resize();
+        aperture.render(0);
       };
       window.addEventListener("resize", onResize);
-      return () => window.removeEventListener("resize", onResize);
+      return () => {
+        window.removeEventListener("resize", onResize);
+        if (rafId !== null) cancelAnimationFrame(rafId);
+      };
     }
+
+    const onResize = () => aperture.resize();
+    window.addEventListener("resize", onResize);
 
     const trigger = ScrollTrigger.create({
       trigger: trackRef.current,
@@ -94,6 +115,8 @@ export default function ReconCanvas() {
       trigger.kill();
       chrome.scrollTrigger?.kill();
       chrome.kill();
+      window.removeEventListener("resize", onResize);
+      if (rafId !== null) cancelAnimationFrame(rafId);
     };
   }, []);
 
@@ -104,15 +127,13 @@ export default function ReconCanvas() {
       <div className="recon__stage">
         <canvas className="recon__canvas" ref={canvasRef} />
 
-        <Dithering
+        <canvas
           className={`recon__rest${atRest ? "" : " recon__rest--hidden"}`}
           aria-hidden="true"
-          colorFront="#ff2900"
-          colorBack="#00000000"
-          shape="sphere"
-          type="4x4"
-          size={2}
-          speed={reducedMotion ? 0 : 1}
+          ref={apertureRef}
+          onMouseEnter={() => apertureCtl.current?.setHover(true)}
+          onMouseLeave={() => apertureCtl.current?.setHover(false)}
+          onClick={() => apertureCtl.current?.pulse()}
         />
 
         <div className="recon__title" ref={titleRef}>
