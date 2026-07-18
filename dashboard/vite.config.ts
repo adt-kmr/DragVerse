@@ -8,9 +8,11 @@ export default defineConfig({
   server: {
     port: 5173,
     // Same-origin in the browser, so the orchestrator needs no CORS config.
-    proxy: {
-      "/ws/status": { target: ORCHESTRATOR, ws: true },
-      "/status": { target: ORCHESTRATOR },
-    },
+    proxy: Object.fromEntries(
+      ["/health", "/capture", "/reconstruct", "/segment", "/generate-twin", "/plan",
+       "/train", "/optimize", "/deploy", "/sync", "/status"]
+        .map((route) => [route, { target: ORCHESTRATOR }])
+        .concat([["/ws/status", { target: ORCHESTRATOR, ws: true }]]),
+    ),
   },
 });
