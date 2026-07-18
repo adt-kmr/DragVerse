@@ -24,10 +24,22 @@ def test_export_writes_a_complete_manifest(policy_path):
     manifest = export_model(policy_path, "Snapdragon X Elite CRD")
     assert MANIFEST_FIELDS <= set(manifest)
     assert manifest["precision"] == "int8"
-    assert manifest["op_coverage"] == 100.0
     assert manifest["est_latency_ms"] > 0
     assert json.load(open(manifest["manifest_path"]))["device_label"] == \
         "Snapdragon X Elite CRD"
+
+
+def test_local_export_reports_no_op_coverage(policy_path):
+    """A locally-quantized bundle never touched an NPU, so it has nothing to report."""
+    manifest = export_model(policy_path)
+    assert manifest["op_coverage"] is None
+    assert manifest["latency_source"] == "host-cpu"
+
+
+def test_qairt_backend_is_not_claimed_without_a_conversion(policy_path, monkeypatch):
+    """PATH alone must not promote the label — only a converter that actually ran."""
+    monkeypatch.setattr("deployment.qairt.convert.shutil.which", lambda _: None)
+    assert convert_to_qairt(policy_path)["backend"] == "local"
 
 
 def test_export_falls_back_to_local_without_a_token(policy_path, monkeypatch):

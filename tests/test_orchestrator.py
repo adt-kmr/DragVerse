@@ -103,7 +103,11 @@ def test_full_pipeline_reaches_a_running_deployment(client):
     optimized = client.post("/optimize", json={
         "policy_id": trained.json()["policy_id"],
         "device_label": "Snapdragon X Elite CRD"}).json()
-    assert optimized["op_coverage"] == 100.0
+    # No AI Hub token in CI, so this is the local path: a real int8 bundle timed on the
+    # host CPU, with no op coverage to report because nothing was compiled for an NPU.
+    assert optimized["op_coverage"] is None
+    assert optimized["latency_source"] == "host-cpu"
+    assert optimized["backend"] == "local"
     assert optimized["est_latency"] > 0
 
     deployed = client.post("/deploy", json={
