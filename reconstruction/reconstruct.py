@@ -49,7 +49,7 @@ def read_ply(path: str) -> tuple:
     return np.array(points), np.array(colors, dtype=np.uint8)
 
 
-def reconstruct(scan_dir: str, mode: str = "fast", out_dir: str = None,
+def reconstruct(scan_dir: str, mode: str = "fast", out_dir: str | None = None,
                 voxel_size: float = 0.02) -> dict:
     out_dir = out_dir or scan_dir
     os.makedirs(out_dir, exist_ok=True)

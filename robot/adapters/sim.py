@@ -6,7 +6,7 @@ from .base import TwinForgeRobot
 class SimRobot(TwinForgeRobot):
     """Kinematic robot on the generated navmesh — no physics, just occupancy."""
 
-    def __init__(self, navmesh: dict = None, start=(0.0, 0.0, 0.0)):
+    def __init__(self, navmesh: dict | None = None, start=(0.0, 0.0, 0.0)):
         self.navmesh = navmesh
         self.pose = tuple(start)
 
