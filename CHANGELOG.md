@@ -28,8 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Orchestrator REST surface implementing §16 end to end, with a job registry behind
   `GET /status/{job_id}`.
 - Python SDK with all eight verbs plus `run_pipeline`, `sync`, and `status`.
-- Dashboard: live job board over `/ws/status`, reconnecting, proxied to the orchestrator
-  by Vite in dev.
+- Dashboard: operator console driving all nine endpoints as a locked-until-ready stage
+  rail, a plan view drawn from `/segment` bounding boxes and `/deploy`'s pose trace, and
+  a live job feed over `/ws/status`.
 - Android capture companion: ARCore depth frames packed as `.npz` and chunk-uploaded to
   `POST /capture`, with the camera- and world-frame conversions applied once on device.
 - Unity batch-mode twin generator: `scene.json` -> prefabs, primitive colliders, and a
@@ -39,6 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `build-backend` in `pyproject.toml` pointed at a nonexistent module, which made the
   package impossible to install.
+- `/ws/status` 404'd under uvicorn: no websocket library was in `requirements.txt`, so
+  the route was unreachable outside the test client. Added `websockets`.
 
 ## [0.1.0] - 2026-07-18
 

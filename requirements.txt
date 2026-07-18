@@ -7,6 +7,7 @@ wheel>=0.42
 fastapi>=0.110.0
 uvicorn>=0.29.0
 python-multipart>=0.0.9   # chunked capture uploads
+websockets>=12.0          # /ws/status — uvicorn serves no websockets without it
 httpx>=0.27.0             # SDK transport
 numpy>=1.26.0
 PyYAML>=6.0
