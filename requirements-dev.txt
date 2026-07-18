@@ -1,5 +1,18 @@
 -r requirements.txt
 
+# Test + coverage
+pytest>=8.0.0
+pytest-cov>=4.1.0
+
+# Lint / format / type / security — every tool `make lint`, `make format-check`
+# and the CI security job invoke.
+flake8>=7.0.0
+black>=24.1.0
+isort>=5.13.0
+mypy>=1.8.0
+bandit>=1.7.7
+pre-commit>=3.6.0
+
 # Development tools
 ipython>=8.20.0
 ipdb>=0.13.13

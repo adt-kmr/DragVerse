@@ -162,29 +162,19 @@ dmypy.json
 # Exported model artifacts
 /models/
 
+data/
 
+# Dashboard
+node_modules/
 
+# Unity
+twin/unity_project/Library/
+twin/unity_project/Temp/
+twin/unity_project/Logs/
+twin/unity_project/Assets/Generated/
 
-
-
-
-
-
-/[Aa]ssets/AssetStoreTools*
-[Ll]ibrary/
-[Tt]mp/
-[Tt]emp/
-[Oo]bj/
-[Bb]uild/
-[Bb]uilds/
-[Ll]ogs/
-[Mm]emoryCaptures/
-/[Vv]ersioning/
-.plastic/
-UserSettings/
-**/*.csproj
-**/*.sln
-**/*.suo
-**/*.user
-**/*.unitypackage
+# Android
+capture/android/.gradle/
+capture/android/local.properties
+capture/android/**/build/
 
