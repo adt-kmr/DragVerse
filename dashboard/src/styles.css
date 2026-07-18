@@ -5,9 +5,15 @@
    indigo, mid is teal, near is hot. Near is spent only where the system is sensing or
    working right now, so colour carries state instead of decorating.
 
-   Type is one variable family at both ends of its width axis — expanded for display,
-   condensed for instrument labels. Newsreader sets sentences a human says; JetBrains Mono
-   sets what the machine measured.
+   Type is one variable family at both ends of its width axis — Archivo expanded for
+   display, condensed for instrument labels, regular for body — against JetBrains Mono for
+   anything the machine measured. Two families, contrasting on proportion rather than on
+   the serif/sans axis: this brand is an instrument, and a text serif here would be warmth
+   applied as costume.
+
+   Sizes come from two ramps, never ad hoc: --ui-* is fixed rem for the console (dense,
+   predictable), --brand-* is fluid clamp for the landing. Nothing sits below 14px, since
+   the viewing context is a projector in a bright room.
 
    The console and telemetry rules below are the originals: rather than rewrite them for
    the new identity, the legacy token names are retargeted onto the Depth Sheet palette. */
@@ -20,8 +26,18 @@
   --far: #22307e;
   --mid: #14b09a;
   --near: #ff5b2e;
-  --muted: #5d6560;
+  --muted: #4a524d;
   --body: #2c3238;
+
+  /* The ramp's hot and mid ends are graphic colours: they carry the scan plane, the robot
+     marker and the point cloud, where 3:1 is the bar and large size does the work. As
+     small text on vellum they measure 2.69:1 and 3.49:1, which fails. Text takes the -ink
+     pair instead — same hues, dark enough to read from the back row of a demo room. */
+  --near-ink: #a82c0c;
+  --mint-ink: #06584e;
+
+  /* 1px hairlines disappear on a projector. */
+  --hair: 1.5px;
 
   /* Legacy names, retargeted. The console was built dark; these three lines are what
      move it onto the sheet without touching a single one of its rules. */
@@ -34,9 +50,27 @@
   --coral: #c0331c;
   --cyan: var(--far);
 
-  --display: "Archivo", "Helvetica Neue", sans-serif;
-  --prose: "Newsreader", Georgia, serif;
+  /* Two families, contrasting on proportion: one variable grotesque used at both ends of
+     its width axis, and a monospace for anything the machine measured. The serif that
+     used to set body copy is gone — this brand is an instrument, and a serif "for warmth"
+     on a technical brief is the reflex, not a decision. Archivo carries display and body
+     alike; its width axis does the work a second family would otherwise do. */
+  --sans: "Archivo", "Helvetica Neue", Arial, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --display: var(--sans);
+
+  /* UI ramp — console, labels, data. Fixed rem, ~1.125 ratio, floored at 14px so nothing
+     disappears from the back row of a demo. */
+  --ui-sm: 0.875rem;
+  --ui-base: 1rem;
+  --ui-lg: 1.125rem;
+
+  /* Brand ramp — landing. Fluid, >=1.25 between heading steps. */
+  --brand-body: 1.125rem;
+  --brand-lead: clamp(1.15rem, 1.4vw, 1.3rem);
+  --brand-sub: clamp(1.5rem, 2.6vw, 2.1rem);
+  --brand-title: clamp(2rem, 3.8vw, 3rem);
+  --brand-display: clamp(2.4rem, 4.6vw, 3.75rem);
 
   --gutter: clamp(1.25rem, 4vw, 3.5rem);
   --band-gap: clamp(4.5rem, 11vw, 9rem);
@@ -54,10 +88,12 @@ body {
   margin: 0;
   background: var(--vellum);
   color: var(--graphite);
-  font-family: var(--prose);
-  font-size: 1rem;
+  font-family: var(--sans);
+  font-size: var(--brand-body);
   line-height: 1.6;
   font-variant-numeric: tabular-nums;
+  font-optical-sizing: auto;
+  font-kerning: normal;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
 }
@@ -98,7 +134,7 @@ body {
   display: block;
   font-family: var(--display);
   font-variation-settings: "wdth" 62, "wght" 600;
-  font-size: 0.7rem;
+  font-size: var(--ui-sm);
   letter-spacing: 0.3em;
   text-transform: uppercase;
   color: var(--muted);
@@ -106,7 +142,7 @@ body {
 
 .preload__bar {
   position: relative;
-  height: 1px;
+  height: var(--hair);
   margin: 1.1rem 0 0.9rem;
   background: var(--rule);
   overflow: hidden;
@@ -123,7 +159,7 @@ body {
 .preload__count {
   margin: 0;
   font-family: var(--mono);
-  font-size: 0.72rem;
+  font-size: var(--ui-sm);
   color: var(--muted);
 }
 
@@ -175,13 +211,13 @@ body {
   align-items: baseline;
   justify-content: space-between;
   padding: 1.75rem 0 1rem;
-  border-bottom: 1px solid var(--rule);
+  border-bottom: var(--hair) solid var(--rule);
 }
 
 .masthead__mark {
   font-family: var(--display);
   font-variation-settings: "wdth" 112, "wght" 700;
-  font-size: 1.05rem;
+  font-size: var(--ui-lg);
   letter-spacing: 0.02em;
   text-decoration: none;
   color: var(--graphite);
@@ -192,7 +228,7 @@ body {
   gap: 1.5rem;
   font-family: var(--display);
   font-variation-settings: "wdth" 62, "wght" 600;
-  font-size: 0.7rem;
+  font-size: var(--ui-sm);
   letter-spacing: 0.22em;
   text-transform: uppercase;
 }
@@ -201,7 +237,7 @@ body {
   color: var(--muted);
   text-decoration: none;
   padding-bottom: 0.2rem;
-  border-bottom: 1px solid transparent;
+  border-bottom: var(--hair) solid transparent;
 }
 
 .masthead__nav a:hover {
@@ -210,7 +246,7 @@ body {
 
 .masthead__nav a.is-here {
   color: var(--graphite);
-  border-bottom-color: var(--near);
+  border-bottom-color: var(--near-ink);
 }
 
 .masthead__meta {
@@ -219,7 +255,7 @@ body {
   gap: 1.75rem;
   margin: 0;
   font-family: var(--mono);
-  font-size: 0.68rem;
+  font-size: var(--ui-sm);
   color: var(--muted);
 }
 
@@ -247,9 +283,9 @@ body {
   gap: 0.5rem 2rem;
   justify-content: space-between;
   padding: 2rem 0 3.5rem;
-  border-top: 1px solid var(--rule);
+  border-top: var(--hair) solid var(--rule);
   font-family: var(--mono);
-  font-size: 0.68rem;
+  font-size: var(--ui-sm);
   color: var(--muted);
 }
 
@@ -259,6 +295,14 @@ body {
 .recon {
   position: relative;
   height: 560vh;
+}
+
+/* Without the scrub there is nothing to scroll through — the canvas paints its finished
+   state immediately, so the track collapses to one screen instead of 5.6 empty ones. */
+@media (prefers-reduced-motion: reduce) {
+  .recon {
+    height: 100vh;
+  }
 }
 
 .recon__stage {
@@ -285,9 +329,10 @@ body {
   margin: 0;
   font-family: var(--display);
   font-variation-settings: "wdth" 118, "wght" 760;
-  font-size: clamp(2rem, 4.5vw, 3.9rem);
-  line-height: 0.94;
-  letter-spacing: -0.035em;
+  font-size: var(--brand-display);
+  line-height: 0.98;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
 }
 
 .display em {
@@ -296,10 +341,11 @@ body {
 }
 
 .lede {
-  max-width: 32rem;
+  max-width: 52ch;
   margin: 1.6rem 0 0;
-  font-size: clamp(1rem, 1.35vw, 1.16rem);
-  line-height: 1.55;
+  font-size: var(--brand-lead);
+  line-height: 1.5;
+  text-wrap: pretty;
   color: var(--body);
 }
 
@@ -307,7 +353,7 @@ body {
   margin: 2rem 0 0;
   font-family: var(--display);
   font-variation-settings: "wdth" 62, "wght" 600;
-  font-size: 0.68rem;
+  font-size: var(--ui-sm);
   letter-spacing: 0.28em;
   text-transform: uppercase;
   color: var(--muted);
@@ -325,24 +371,25 @@ body {
 
 .recon__step {
   font-family: var(--mono);
-  font-size: 0.72rem;
-  color: var(--near);
+  font-size: var(--ui-sm);
+  color: var(--near-ink);
   align-self: center;
 }
 
 .recon__name {
   font-family: var(--display);
   font-variation-settings: "wdth" 112, "wght" 700;
-  font-size: clamp(1.5rem, 3vw, 2.4rem);
+  font-size: var(--brand-sub);
   line-height: 1;
   letter-spacing: -0.02em;
 }
 
 .recon__note {
   grid-column: 2;
-  font-size: 0.98rem;
-  line-height: 1.5;
+  font-size: var(--ui-base);
+  line-height: 1.55;
   color: var(--muted);
+  text-wrap: pretty;
 }
 
 .recon__readout {
@@ -352,13 +399,13 @@ body {
   gap: 0.5rem;
   text-align: right;
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--ui-sm);
   opacity: 0;
 }
 
 .recon__readout span {
   display: block;
-  font-size: 0.62rem;
+  font-size: var(--ui-sm);
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--muted);
@@ -376,7 +423,7 @@ body {
   grid-template-columns: minmax(9rem, 1fr) minmax(0, 3.1fr);
   gap: var(--gutter);
   padding: var(--band-gap) 0;
-  border-top: 1px solid var(--rule);
+  border-top: var(--hair) solid var(--rule);
 }
 
 .band--gate {
@@ -392,7 +439,7 @@ body {
 /* Marginalia — a surveyor annotates the margin, not the drawing. */
 .notes {
   font-family: var(--mono);
-  font-size: 0.68rem;
+  font-size: var(--ui-sm);
   line-height: 1.7;
   color: var(--muted);
 }
@@ -400,7 +447,7 @@ body {
 .notes p {
   margin: 0 0 0.7rem;
   padding-left: 0.9rem;
-  border-left: 1px solid var(--rule);
+  border-left: var(--hair) solid var(--rule);
 }
 
 .eyebrow {
@@ -408,32 +455,34 @@ body {
   margin-bottom: 1rem;
   font-family: var(--display);
   font-variation-settings: "wdth" 62, "wght" 600;
-  font-size: 0.7rem;
+  font-size: var(--ui-sm);
   letter-spacing: 0.3em;
   text-transform: uppercase;
-  color: var(--near);
+  color: var(--near-ink);
 }
 
 .title {
   margin: 0 0 1.4rem;
   font-family: var(--display);
   font-variation-settings: "wdth" 115, "wght" 700;
-  font-size: clamp(1.8rem, 3.9vw, 3.1rem);
-  line-height: 1.02;
-  letter-spacing: -0.03em;
+  font-size: var(--brand-title);
+  line-height: 1.04;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
 }
 
 .prose {
-  max-width: 34rem;
+  max-width: 60ch;
   margin: 0 0 2rem;
-  font-size: 1.1rem;
-  line-height: 1.62;
+  font-size: var(--brand-body);
+  line-height: 1.6;
+  text-wrap: pretty;
   color: var(--body);
 }
 
 .prose--small {
   margin: 2rem 0 0;
-  font-size: 0.95rem;
+  font-size: var(--ui-base);
   color: var(--muted);
 }
 
@@ -450,7 +499,7 @@ body {
   list-style: none;
   margin: 0;
   padding: 0;
-  border-top: 1px solid var(--rule);
+  border-top: var(--hair) solid var(--rule);
 }
 
 .step {
@@ -458,12 +507,12 @@ body {
   grid-template-columns: 3.25rem 1fr;
   gap: 0 1rem;
   padding: 1.35rem 0;
-  border-bottom: 1px solid var(--rule);
+  border-bottom: var(--hair) solid var(--rule);
 }
 
 .step__n {
   font-family: var(--mono);
-  font-size: 0.72rem;
+  font-size: var(--ui-sm);
   color: var(--muted);
   padding-top: 0.35rem;
 }
@@ -472,20 +521,23 @@ body {
   margin: 0 0 0.35rem;
   font-family: var(--display);
   font-variation-settings: "wdth" 108, "wght" 660;
-  font-size: 1.18rem;
+  font-size: var(--ui-lg);
   letter-spacing: -0.01em;
+  text-wrap: balance;
 }
 
 .step__body p {
-  max-width: 34rem;
+  max-width: 60ch;
   margin: 0 0 0.6rem;
+  line-height: 1.6;
   color: var(--body);
+  text-wrap: pretty;
 }
 
 .step__body code {
   display: block;
   font-family: var(--mono);
-  font-size: 0.74rem;
+  font-size: var(--ui-sm);
   color: var(--far);
   overflow-wrap: anywhere;
 }
@@ -501,8 +553,8 @@ body {
 
 .steps__loopmark {
   font-family: var(--mono);
-  font-size: 1rem;
-  color: var(--near);
+  font-size: var(--ui-base);
+  color: var(--near-ink);
   padding-top: 0.15rem;
 }
 
@@ -516,7 +568,7 @@ body {
 .simgate__meter {
   position: relative;
   height: 2.75rem;
-  border: 1px solid var(--rule);
+  border: var(--hair) solid var(--rule);
   background: repeating-linear-gradient(
     90deg,
     transparent 0 calc(10% - 1px),
@@ -535,7 +587,7 @@ body {
 .simgate__legend {
   margin: 0.85rem 0 0;
   font-family: var(--mono);
-  font-size: 0.74rem;
+  font-size: var(--ui-sm);
   color: var(--muted);
 }
 
@@ -555,7 +607,7 @@ body {
   margin: 0;
   padding: 0;
   background: var(--rule);
-  border: 1px solid var(--rule);
+  border: var(--hair) solid var(--rule);
 }
 
 .edge-tier {
@@ -568,7 +620,7 @@ body {
   margin-bottom: 0.6rem;
   font-family: var(--display);
   font-variation-settings: "wdth" 62, "wght" 700;
-  font-size: 0.72rem;
+  font-size: var(--ui-sm);
   letter-spacing: 0.24em;
   text-transform: uppercase;
   color: var(--far);
@@ -576,7 +628,7 @@ body {
 
 .edge-tier p {
   margin: 0;
-  font-size: 0.98rem;
+  font-size: var(--ui-base);
   color: var(--body);
 }
 
@@ -589,7 +641,7 @@ body {
   background: var(--graphite);
   color: #d8ded6;
   font-family: var(--mono);
-  font-size: 0.82rem;
+  font-size: var(--ui-base);
   line-height: 1.75;
 }
 
@@ -610,11 +662,11 @@ body {
 .btn {
   display: inline-block;
   padding: 0.75rem 1.5rem;
-  border: 1px solid var(--graphite);
+  border: var(--hair) solid var(--graphite);
   color: var(--graphite);
   font-family: var(--display);
   font-variation-settings: "wdth" 84, "wght" 620;
-  font-size: 0.78rem;
+  font-size: var(--ui-sm);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   text-decoration: none;
@@ -641,7 +693,7 @@ body {
 .console {
   /* The console is instrumentation: everything in it is set in the data face. */
   font-family: var(--mono);
-  font-size: 14px;
+  font-size: var(--ui-base);
   /* Tighter than a landing band — an operator wants the rail on screen, not air. */
   padding: 3rem 0 4rem;
 }
@@ -657,11 +709,11 @@ body {
 
 .console__head .title {
   margin: 0;
-  font-size: clamp(1.5rem, 3vw, 2.4rem);
+  font-size: var(--brand-sub);
 }
 
 .link {
-  font-size: 0.7rem;
+  font-size: var(--ui-sm);
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--muted);
@@ -679,7 +731,7 @@ body {
   vertical-align: middle;
 }
 
-.link.up { color: var(--mint); }
+.link.up { color: var(--mint-ink); }
 .link.down { color: var(--coral); }
 
 .console__grid {
@@ -703,7 +755,7 @@ body {
   padding: 0;
   /* The pipeline is a strict sequence — every stage consumes the id before it.
      The line is that dependency, drawn. */
-  border-left: 1px solid var(--line);
+  border-left: var(--hair) solid var(--line);
 }
 
 .stage {
@@ -720,11 +772,11 @@ body {
   margin-left: -2.75rem;
   display: grid;
   place-items: center;
-  border: 1px solid var(--line);
+  border: var(--hair) solid var(--line);
   border-radius: 50%;
   background: var(--ink);
   color: var(--muted);
-  font-size: 0.75rem;
+  font-size: var(--ui-sm);
   letter-spacing: 0.08em;
   transition: color 150ms, border-color 150ms;
 }
@@ -735,14 +787,14 @@ body {
 }
 
 .stage.busy .marker {
-  color: var(--amber);
-  border-color: var(--amber);
+  color: var(--near-ink);
+  border-color: var(--near-ink);
   animation: pulse 1.2s ease-in-out infinite;
 }
 
 .stage.done .marker {
-  color: var(--mint);
-  border-color: var(--mint);
+  color: var(--mint-ink);
+  border-color: var(--mint-ink);
 }
 
 .stage.failed .marker {
@@ -777,14 +829,14 @@ body {
   margin: 0;
   font-family: var(--display);
   font-variation-settings: "wdth" 76, "wght" 640;
-  font-size: 0.9rem;
+  font-size: var(--ui-base);
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
 .stage .out {
   color: var(--cyan);
-  font-size: 0.75rem;
+  font-size: var(--ui-sm);
 }
 
 .stage .fields {
@@ -797,7 +849,7 @@ body {
   display: grid;
   gap: 0.35rem;
   color: var(--muted);
-  font-size: 0.65rem;
+  font-size: var(--ui-sm);
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
@@ -806,23 +858,23 @@ body {
 .stage select {
   width: 100%;
   padding: 0.5rem 0.65rem;
-  border: 1px solid var(--line);
+  border: var(--hair) solid var(--line);
   background: var(--vellum);
   color: var(--text);
   font: inherit;
-  font-size: 0.85rem;
+  font-size: var(--ui-base);
   letter-spacing: normal;
   text-transform: none;
 }
 
 .stage button {
   padding: 0.5rem 1.1rem;
-  border: 1px solid var(--text);
+  border: var(--hair) solid var(--text);
   background: transparent;
   color: var(--text);
   font-family: var(--display);
   font-variation-settings: "wdth" 76, "wght" 620;
-  font-size: 0.7rem;
+  font-size: var(--ui-sm);
   letter-spacing: 0.18em;
   text-transform: uppercase;
   cursor: pointer;
@@ -843,7 +895,7 @@ body {
 .hint {
   margin: 0.5rem 0 0;
   color: var(--muted);
-  font-size: 0.75rem;
+  font-size: var(--ui-sm);
 }
 
 .hint code {
@@ -855,7 +907,7 @@ body {
   margin: 0.75rem 0 0;
   padding-left: 1.1rem;
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: var(--ui-sm);
 }
 
 .graph span {
@@ -867,7 +919,7 @@ body {
   border-left: 2px solid var(--coral);
   padding: 0.5rem 0.75rem;
   background: rgba(192, 51, 28, 0.06);
-  font-size: 0.78rem;
+  font-size: var(--ui-sm);
 }
 
 .error strong {
@@ -904,7 +956,7 @@ body {
 }
 
 .panel {
-  border: 1px solid var(--line);
+  border: var(--hair) solid var(--line);
   background: var(--panel);
   padding: 1.25rem;
   min-width: 0;
@@ -915,7 +967,7 @@ body {
   font-family: var(--display);
   font-variation-settings: "wdth" 62, "wght" 620;
   color: var(--muted);
-  font-size: 0.68rem;
+  font-size: var(--ui-sm);
   letter-spacing: 0.22em;
   text-transform: uppercase;
 }
@@ -963,13 +1015,13 @@ svg.plan {
 
 .trace {
   fill: none;
-  stroke: var(--amber);
+  stroke: var(--near-ink);
   stroke-linejoin: round;
   stroke-linecap: round;
 }
 
 .robot {
-  fill: var(--amber);
+  fill: var(--near-ink);
 }
 
 /* -------------------------------------------------------------------- jobs */
@@ -980,7 +1032,7 @@ svg.plan {
   padding: 0;
   max-height: 20rem;
   overflow-y: auto;
-  font-size: 0.78rem;
+  font-size: var(--ui-sm);
 }
 
 .jobs li {
@@ -988,7 +1040,7 @@ svg.plan {
   grid-template-columns: 8rem 5rem 1fr;
   gap: 1rem;
   padding: 0.45rem 0;
-  border-bottom: 1px solid var(--line);
+  border-bottom: var(--hair) solid var(--line);
 }
 
 .jobs .stage-name {
@@ -998,16 +1050,16 @@ svg.plan {
 
 .jobs .status {
   text-transform: uppercase;
-  font-size: 0.7rem;
+  font-size: var(--ui-sm);
   letter-spacing: 0.12em;
 }
 
 .jobs .running .status,
 .jobs li.running .status {
-  color: var(--amber);
+  color: var(--near-ink);
 }
 
-.jobs li.done .status { color: var(--mint); }
+.jobs li.done .status { color: var(--mint-ink); }
 .jobs li.failed .status { color: var(--coral); }
 
 .jobs .detail {
@@ -1024,7 +1076,7 @@ svg.plan {
 .telemetry h3 {
   font-family: var(--display);
   font-variation-settings: "wdth" 62, "wght" 620;
-  font-size: 0.72rem;
+  font-size: var(--ui-sm);
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--muted);
@@ -1034,7 +1086,7 @@ svg.plan {
 .tiers {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.78rem;
+  font-size: var(--ui-sm);
   margin-bottom: 1rem;
 }
 
@@ -1044,17 +1096,17 @@ svg.plan {
   font-weight: 400;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  font-size: 0.68rem;
+  font-size: var(--ui-sm);
   padding: 0.3rem 0.6rem 0.3rem 0;
-  border-bottom: 1px solid var(--line);
+  border-bottom: var(--hair) solid var(--line);
 }
 
 .tiers td {
   padding: 0.35rem 0.6rem 0.35rem 0;
-  border-bottom: 1px solid var(--line);
+  border-bottom: var(--hair) solid var(--line);
 }
 
-.unit-npu { color: var(--mint); }
+.unit-npu { color: var(--mint-ink); }
 /* Stated plainly: the QRB2210 has no tensor NPU, and the demo must not imply one. */
 .unit-cpu { color: var(--muted); }
 
@@ -1065,7 +1117,7 @@ svg.plan {
 }
 
 .bench-card {
-  border: 1px solid var(--line);
+  border: var(--hair) solid var(--line);
   background: var(--ink);
   padding: 0.75rem;
 }
@@ -1080,24 +1132,24 @@ svg.plan {
 
 .bench-card h4 {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: var(--ui-base);
   overflow-wrap: anywhere;
 }
 
 .gate {
-  font-size: 0.7rem;
+  font-size: var(--ui-sm);
   white-space: nowrap;
 }
 
-.gate.pass { color: var(--mint); }
-.gate.fail { color: var(--amber); }
+.gate.pass { color: var(--mint-ink); }
+.gate.fail { color: var(--near-ink); }
 
 .bench-card dl {
   display: grid;
   grid-template-columns: auto 1fr;
   gap: 0.15rem 0.75rem;
   margin: 0 0 0.6rem;
-  font-size: 0.74rem;
+  font-size: var(--ui-sm);
 }
 
 .bench-card dt { color: var(--muted); }
@@ -1108,7 +1160,7 @@ svg.plan {
   align-items: center;
   gap: 0.5rem;
   margin-bottom: 0.25rem;
-  font-size: 0.72rem;
+  font-size: var(--ui-sm);
 }
 
 .bar-label {
@@ -1132,17 +1184,17 @@ svg.plan {
 }
 
 .speedup {
-  color: var(--mint);
-  font-size: 0.74rem;
+  color: var(--mint-ink);
+  font-size: var(--ui-sm);
   margin: 0.35rem 0 0;
 }
 
-.bench-warn { color: var(--amber); font-size: 0.72rem; margin: 0.4rem 0 0; }
-.bench-error { color: var(--coral); font-size: 0.74rem; margin: 0.4rem 0 0; }
+.bench-warn { color: var(--near-ink); font-size: var(--ui-sm); margin: 0.4rem 0 0; }
+.bench-error { color: var(--coral); font-size: var(--ui-sm); margin: 0.4rem 0 0; }
 
 .bench-empty, .bench-source {
   color: var(--muted);
-  font-size: 0.74rem;
+  font-size: var(--ui-sm);
   margin: 0.5rem 0 0;
 }
 
@@ -1151,11 +1203,11 @@ svg.plan {
   overflow-wrap: anywhere;
 }
 
-.tail { font-size: 0.72rem; color: var(--text); margin: 0 0 0.4rem; }
+.tail { font-size: var(--ui-sm); color: var(--text); margin: 0 0 0.4rem; }
 .muted { color: var(--muted); }
 
-.fallbacks { font-size: 0.72rem; margin-bottom: 0.5rem; }
-.fallbacks summary { color: var(--amber); cursor: pointer; }
+.fallbacks { font-size: var(--ui-sm); margin-bottom: 0.5rem; }
+.fallbacks summary { color: var(--near-ink); cursor: pointer; }
 .fallbacks ul { list-style: none; padding: 0.4rem 0 0; margin: 0; }
 .fallbacks li { padding: 0.1rem 0; overflow-wrap: anywhere; }
 .fallbacks code { color: var(--cyan); }

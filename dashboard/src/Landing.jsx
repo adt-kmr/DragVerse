@@ -56,7 +56,6 @@ export default function Landing() {
         </aside>
 
         <div className="band__body">
-          <span className="eyebrow" data-reveal>The loop</span>
           <h2 className="title" data-reveal>Eight calls, scan to silicon.</h2>
           <p className="prose" data-reveal>
             The order is not a diagram. Every stage takes the identifier the last one
@@ -94,7 +93,6 @@ export default function Landing() {
           <p>HTTP 409 on failure</p>
         </aside>
         <div className="band__body">
-          <span className="eyebrow" data-reveal>The one rule</span>
           <h2 className="title" data-reveal>An unvalidated policy never reaches hardware.</h2>
           <p className="prose" data-reveal>
             <code>/train</code> refuses to return a policy that misses the simulated success
@@ -119,7 +117,6 @@ export default function Landing() {
           <p>Airplane mode is the demo.</p>
         </aside>
         <div className="band__body">
-          <span className="eyebrow" data-reveal>Where it runs</span>
           <h2 className="title" data-reveal>Commodity edge hardware, end to end.</h2>
           <p className="prose" data-reveal>
             Every stage was built to survive a room with no uplink. The cloud is an
@@ -142,7 +139,6 @@ export default function Landing() {
           <p>orchestrator :8000</p>
         </aside>
         <div className="band__body">
-          <span className="eyebrow" data-reveal>Start</span>
           <h2 className="title" data-reveal>The whole loop is one method.</h2>
           <pre className="code" data-reveal>
             <code>
