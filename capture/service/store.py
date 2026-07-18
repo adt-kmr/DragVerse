@@ -2,6 +2,7 @@
 import json
 import os
 
+
 def data_root() -> str:
     return os.environ.get("TWINFORGE_DATA", "data")
 
