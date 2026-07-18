@@ -1,0 +1,12 @@
+# Qualcomm NPU toolchain — needed only to compile/profile models on real Snapdragon
+# silicon via the AI Hub device cloud. Nothing in requirements.txt depends on these;
+# the pipeline runs and tests pass without them.
+#
+#   pip install -r requirements.txt -r requirements-npu.txt
+#   qai-hub configure --api_token <token from https://app.aihub.qualcomm.com>
+#
+# Verified installing on Python 3.14 / macOS arm64: qai-hub 0.52.0, torch 2.13.0.
+
+qai-hub>=0.52.0          # compile + profile jobs against real devices
+torch>=2.6.0             # tracing models before submission (_export_via_ai_hub needs it)
+onnx>=1.16.0             # model interchange format accepted by AI Hub

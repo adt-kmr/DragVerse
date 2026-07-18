@@ -277,9 +277,26 @@ def optimize(body: dict = Body(...)):
                             artifact_url=manifest["artifact_path"])
     jobs.finish_job(job_id, detail=artifact_id)
     return {"artifact_id": artifact_id, "job_id": job_id,
+            # None on the local path — the dashboard renders "not profiled" rather than
+            # letting a host-CPU bundle read as an NPU-compiled one.
             "op_coverage": manifest["op_coverage"],
             "est_latency": manifest["est_latency_ms"],
+            "latency_source": manifest.get("latency_source", "host-cpu"),
             "backend": manifest["backend"]}
+
+
+@app.get("/benchmarks")
+def benchmarks():
+    """Measured on-device numbers from the AI Hub device cloud.
+
+    Written by `python -m deployment.aihub_export.profile_models`. Absent until that has
+    been run — an empty payload means "not profiled yet", never zero.
+    """
+    path = os.path.join(os.path.dirname(__file__), "..", "benchmarks", "summary.json")
+    if not os.path.exists(path):
+        return {"models": [], "profiled": False}
+    with open(path) as f:
+        return {**json.load(f), "profiled": True}
 
 
 # ---------------------------------------------------------------------------- deploy
