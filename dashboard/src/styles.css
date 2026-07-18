@@ -331,12 +331,9 @@ body {
   height: min(46vmin, 520px);
   transform: translate(0, -50%);
   cursor: pointer;
-  opacity: 1;
-  transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .recon__rest--hidden {
-  opacity: 0;
   pointer-events: none;
 }
 

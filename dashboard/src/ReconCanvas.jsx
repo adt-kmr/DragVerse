@@ -65,7 +65,7 @@ export default function ReconCanvas() {
 
     // Reduced motion: no scrub. Show the finished twin and let the section be one screen.
     if (reduced) {
-      gsap.set(titleRef.current, { opacity: 0 });
+      gsap.set([titleRef.current, apertureRef.current], { opacity: 0 });
       gsap.set([captionRef.current, readoutRef.current], { opacity: 1 });
       paint(1);
       const onResize = () => {
@@ -106,7 +106,8 @@ export default function ReconCanvas() {
           scrub: true,
         },
       })
-      .to(titleRef.current, { opacity: 0, y: -24, ease: "none" }, 0)
+      .to([titleRef.current, apertureRef.current], { opacity: 0, ease: "none" }, 0)
+      .to(titleRef.current, { y: -24, ease: "none" }, 0)
       .to([captionRef.current, readoutRef.current], { opacity: 1, ease: "none" }, 0.4);
 
     paint(0);
