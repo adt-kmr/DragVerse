@@ -22,6 +22,9 @@ FLOOR_MIN_AREA = 1.0    # m^2 of xy footprint before a flat slab counts as floor
 WALL_MIN_HEIGHT = 1.0   # tall enough to be structural
 WALL_MAX_THICKNESS = 0.3
 MIN_CLUSTER_VOXELS = 4  # anything smaller is reconstruction noise
+# Point spacing must stay this far inside the voxel size; the margin absorbs points that
+# straddle a cell boundary, which is where the gaps appear.
+SAFE_SPACING_RATIO = 0.9
 
 
 def _neighbours(key):
@@ -33,13 +36,59 @@ def _neighbours(key):
                     yield (x + dx, y + dy, z + dz)
 
 
+def _nn_spacing(points, sample: int = 200, chunk: int = 25, seed: int = 0) -> float:
+    """Distance from a typical point to its nearest neighbour, over the whole cloud.
+
+    Sampled on the query side only — comparing against the full cloud is what makes
+    this a real spacing estimate. Subsampling the reference side instead would measure
+    the subsample's density rather than the data's.
+    """
+    if len(points) < 2:
+        return 0.0
+    rng = np.random.default_rng(seed)
+    query = points[rng.choice(len(points), min(sample, len(points)), replace=False)]
+
+    nearest = []
+    for start in range(0, len(query), chunk):
+        block = query[start:start + chunk]
+        distances = np.linalg.norm(block[:, None, :] - points[None, :, :], axis=2)
+        distances[distances < 1e-12] = np.inf  # a query point matches itself
+        nearest.append(distances.min(axis=1))
+
+    finite = np.concatenate(nearest)
+    finite = finite[np.isfinite(finite)]
+    return float(np.percentile(finite, 95)) if len(finite) else 0.0
+
+
+def _fit_voxel(points, voxel: float) -> float:
+    """Widen the voxel so neighbouring samples are guaranteed to land in adjacent cells.
+
+    Two points closer together than one voxel differ by at most one cell per axis, so
+    26-connectivity always links them. Once spacing exceeds the voxel that guarantee is
+    gone and a single surface splits wherever a gap happens to fall.
+    """
+    spacing = _nn_spacing(points)
+    if spacing > voxel * SAFE_SPACING_RATIO:
+        return spacing / SAFE_SPACING_RATIO
+    return voxel
+
+
 def _cluster_voxels(points, voxel):
     """Connected components over occupied voxels (26-connectivity).
 
-    Returns a list of point-index arrays. Assumes the cloud is sampled finer than
-    `voxel` — sparser than that and a single surface splits into pieces, because
-    neighbouring points land two voxels apart instead of one.
+    Returns a list of point-index arrays.
+
+    The voxel is widened when the cloud is sparser than the requested resolution.
+    Voxel connectivity only holds while points are closer together than the voxel; a
+    sparser cloud puts neighbouring samples two voxels apart, which shattered a single
+    wall into hundreds of phantom objects (and, sparser still, deleted it entirely when
+    the fragments fell under MIN_CLUSTER_VOXELS). `voxel` is therefore the finest
+    resolution asked for, not a promise the data can always honour.
     """
+    # ponytail: one global voxel for the whole cloud. If density ever varies a lot
+    # within one scan, this should become a per-region fit.
+    voxel = _fit_voxel(points, voxel)
+
     keys = np.floor(points / voxel).astype(np.int64)
     uniq, inverse = np.unique(keys, axis=0, return_inverse=True)
     inverse = inverse.ravel()

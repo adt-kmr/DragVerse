@@ -35,3 +35,19 @@ def test_insert_get_roundtrip(conn):
 def test_fk_violation_raises(conn):
     with pytest.raises(sqlite3.IntegrityError):
         db.insert(conn, "meshes", scan_id="nope", mode="fast")
+
+
+def test_schema_tables_match_constant():
+    assert db.TABLES == TABLES
+
+
+def test_identifiers_are_rejected_not_interpolated(conn):
+    """Table and column names cannot be bound as parameters, so they are guarded."""
+    with pytest.raises(ValueError):
+        db.get(conn, "scans; DROP TABLE scans", "x")
+    with pytest.raises(ValueError):
+        db.insert(conn, "nonexistent", device="x")
+    with pytest.raises(ValueError):
+        db.insert(conn, "scans", **{"device) VALUES ('x'); --": "x"})
+    # the guard did not take the table down with it
+    assert db.get(conn, "scans", "missing") is None
