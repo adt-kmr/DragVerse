@@ -1,71 +1,663 @@
-/* TwinForge operator console — a surveyor's drawing lit from behind:
-   slate ink, hairline grid, amber where work is happening, cyan where data landed. */
+/* TwinForge — "Depth Sheet".
+   One design system across both routes: `/` is the overview, `/dashboard` is the console.
+
+   The palette is a depth ramp, the colormap a depth sensor actually outputs: far is
+   indigo, mid is teal, near is hot. Near is spent only where the system is sensing or
+   working right now, so colour carries state instead of decorating.
+
+   Type is one variable family at both ends of its width axis — expanded for display,
+   condensed for instrument labels. Newsreader sets sentences a human says; JetBrains Mono
+   sets what the machine measured.
+
+   The console and telemetry rules below are the originals: rather than rewrite them for
+   the new identity, the legacy token names are retargeted onto the Depth Sheet palette. */
 
 :root {
-  --ink: #080d16;
-  --panel: #0e1626;
-  --line: #1d2b42;
-  --text: #dbe4f2;
-  --muted: #778aa8;
-  --amber: #f2a03d;
-  --mint: #4ed9a4;
-  --coral: #ff6b6b;
-  --cyan: #7bd3f7;
+  --vellum: #eef0ea;
+  --vellum-deep: #e6e9e1;
+  --graphite: #12151a;
+  --rule: #cbd1c7;
+  --far: #22307e;
+  --mid: #14b09a;
+  --near: #ff5b2e;
+  --muted: #5d6560;
+  --body: #2c3238;
 
-  --mono: ui-monospace, "SF Mono", "IBM Plex Mono", "JetBrains Mono", Menlo, monospace;
+  /* Legacy names, retargeted. The console was built dark; these three lines are what
+     move it onto the sheet without touching a single one of its rules. */
+  --ink: var(--vellum);
+  --panel: var(--vellum-deep);
+  --line: var(--rule);
+  --text: var(--graphite);
+  --amber: var(--near);
+  --mint: #0e8f7d;
+  --coral: #c0331c;
+  --cyan: var(--far);
 
-  color-scheme: dark;
+  --display: "Archivo", "Helvetica Neue", sans-serif;
+  --prose: "Newsreader", Georgia, serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --gutter: clamp(1.25rem, 4vw, 3.5rem);
+  --band-gap: clamp(4.5rem, 11vw, 9rem);
+
+  color-scheme: light;
 }
 
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  /* The survey grid belongs to the plan view, where a square means one metre.
-     Everywhere else it is just texture, so the page stays flat and unlit. */
-  background: var(--ink);
-  color: var(--text);
-  font-family: var(--mono);
-  font-size: 14px;
+  background: var(--vellum);
+  color: var(--graphite);
+  font-family: var(--prose);
+  font-size: 1rem;
+  line-height: 1.6;
   font-variant-numeric: tabular-nums;
-  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
-.console {
-  max-width: 1440px;
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+:focus-visible {
+  outline: 2px solid var(--far);
+  outline-offset: 3px;
+}
+
+/* ------------------------------------------------------------------ preloader */
+
+.preload {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background: var(--vellum);
+}
+
+.preload__body {
+  width: min(28rem, 76vw);
+}
+
+.preload__eyebrow {
+  display: block;
+  font-family: var(--display);
+  font-variation-settings: "wdth" 62, "wght" 600;
+  font-size: 0.7rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.preload__bar {
+  position: relative;
+  height: 1px;
+  margin: 1.1rem 0 0.9rem;
+  background: var(--rule);
+  overflow: hidden;
+}
+
+.preload__scan {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 18%;
+  background: linear-gradient(90deg, transparent, var(--near), transparent);
+  transform: translateX(-100%);
+}
+
+.preload__count {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+/* ---------------------------------------------------------------------- sheet */
+
+.sheet {
+  position: relative;
+  max-width: 1360px;
   margin: 0 auto;
-  padding: 2rem 1.5rem 4rem;
+  padding: 0 var(--gutter);
 }
 
-/* ------------------------------------------------------------------ header */
+/* Registration marks — a survey sheet is trimmed to register, so the corners say where. */
+.reg {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  pointer-events: none;
+}
 
-.console > header {
+.reg::before,
+.reg::after {
+  content: "";
+  position: absolute;
+  background: var(--rule);
+}
+
+.reg::before {
+  inset: 50% 0 auto 0;
+  height: 1px;
+}
+
+.reg::after {
+  inset: 0 auto 0 50%;
+  width: 1px;
+}
+
+.reg--tl { top: 1.1rem; left: 0.75rem; }
+.reg--tr { top: 1.1rem; right: 0.75rem; }
+.reg--bl { bottom: 1.1rem; left: 0.75rem; }
+.reg--br { bottom: 1.1rem; right: 0.75rem; }
+
+/* ------------------------------------------------------------------- masthead */
+
+.masthead {
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
+  gap: 1rem 2rem;
   align-items: baseline;
   justify-content: space-between;
-  border-bottom: 1px solid var(--line);
-  padding-bottom: 1.25rem;
-  margin-bottom: 2rem;
+  padding: 1.75rem 0 1rem;
+  border-bottom: 1px solid var(--rule);
 }
 
-.console h1 {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 600;
-  letter-spacing: 0.24em;
+.masthead__mark {
+  font-family: var(--display);
+  font-variation-settings: "wdth" 112, "wght" 700;
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  color: var(--graphite);
+}
+
+.masthead__nav {
+  display: flex;
+  gap: 1.5rem;
+  font-family: var(--display);
+  font-variation-settings: "wdth" 62, "wght" 600;
+  font-size: 0.7rem;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
+}
+
+.masthead__nav a {
+  color: var(--muted);
+  text-decoration: none;
+  padding-bottom: 0.2rem;
+  border-bottom: 1px solid transparent;
+}
+
+.masthead__nav a:hover {
+  color: var(--graphite);
+}
+
+.masthead__nav a.is-here {
+  color: var(--graphite);
+  border-bottom-color: var(--near);
+}
+
+.masthead__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.75rem;
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.masthead__meta div {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.masthead__meta dt {
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  opacity: 0.65;
+}
+
+.masthead__meta dd {
+  margin: 0;
+  color: var(--graphite);
+}
+
+/* ---------------------------------------------------------------------- stamp */
+
+.stamp {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 2rem;
+  justify-content: space-between;
+  padding: 2rem 0 3.5rem;
+  border-top: 1px solid var(--rule);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+/* =========================================================== landing: the hero */
+
+/* Tall scroll track; the viewport inside it sticks so one canvas carries every stage. */
+.recon {
+  position: relative;
+  height: 560vh;
+}
+
+.recon__stage {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.recon__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.recon__title {
+  position: absolute;
+  inset: auto auto 12vh 0;
+  max-width: min(34rem, 88%);
+  will-change: opacity, transform;
+}
+
+.display {
+  margin: 0;
+  font-family: var(--display);
+  font-variation-settings: "wdth" 118, "wght" 760;
+  font-size: clamp(2rem, 4.5vw, 3.9rem);
+  line-height: 0.94;
+  letter-spacing: -0.035em;
+}
+
+.display em {
+  font-style: normal;
+  color: var(--far);
+}
+
+.lede {
+  max-width: 32rem;
+  margin: 1.6rem 0 0;
+  font-size: clamp(1rem, 1.35vw, 1.16rem);
+  line-height: 1.55;
+  color: var(--body);
+}
+
+.scrollcue {
+  margin: 2rem 0 0;
+  font-family: var(--display);
+  font-variation-settings: "wdth" 62, "wght" 600;
+  font-size: 0.68rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.recon__caption {
+  position: absolute;
+  inset: auto auto 12vh 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.35rem 1rem;
+  max-width: min(30rem, 88%);
+  opacity: 0;
+}
+
+.recon__step {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--near);
+  align-self: center;
+}
+
+.recon__name {
+  font-family: var(--display);
+  font-variation-settings: "wdth" 112, "wght" 700;
+  font-size: clamp(1.5rem, 3vw, 2.4rem);
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.recon__note {
+  grid-column: 2;
+  font-size: 0.98rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.recon__readout {
+  position: absolute;
+  inset: auto 0 12vh auto;
+  display: grid;
+  gap: 0.5rem;
+  text-align: right;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  opacity: 0;
+}
+
+.recon__readout span {
+  display: block;
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.recon__readout b {
+  font-weight: 500;
+  color: var(--far);
+}
+
+/* ============================================================== landing: bands */
+
+.band {
+  display: grid;
+  grid-template-columns: minmax(9rem, 1fr) minmax(0, 3.1fr);
+  gap: var(--gutter);
+  padding: var(--band-gap) 0;
+  border-top: 1px solid var(--rule);
+}
+
+.band--gate {
+  background: linear-gradient(180deg, transparent, rgba(34, 48, 126, 0.04));
+}
+
+.band__body {
+  max-width: 46rem;
+  /* Without this the code block's min-content width pushes the grid track wide. */
+  min-width: 0;
+}
+
+/* Marginalia — a surveyor annotates the margin, not the drawing. */
+.notes {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+.notes p {
+  margin: 0 0 0.7rem;
+  padding-left: 0.9rem;
+  border-left: 1px solid var(--rule);
 }
 
 .eyebrow {
-  margin: 0.35rem 0 0;
-  color: var(--muted);
-  font-size: 0.75rem;
-  letter-spacing: 0.18em;
+  display: block;
+  margin-bottom: 1rem;
+  font-family: var(--display);
+  font-variation-settings: "wdth" 62, "wght" 600;
+  font-size: 0.7rem;
+  letter-spacing: 0.3em;
   text-transform: uppercase;
+  color: var(--near);
+}
+
+.title {
+  margin: 0 0 1.4rem;
+  font-family: var(--display);
+  font-variation-settings: "wdth" 115, "wght" 700;
+  font-size: clamp(1.8rem, 3.9vw, 3.1rem);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+}
+
+.prose {
+  max-width: 34rem;
+  margin: 0 0 2rem;
+  font-size: 1.1rem;
+  line-height: 1.62;
+  color: var(--body);
+}
+
+.prose--small {
+  margin: 2rem 0 0;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+.prose code,
+.steps__loop code {
+  font-family: var(--mono);
+  font-size: 0.86em;
+  color: var(--far);
+}
+
+/* --------------------------------------------------------------------- steps */
+
+.steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--rule);
+}
+
+.step {
+  display: grid;
+  grid-template-columns: 3.25rem 1fr;
+  gap: 0 1rem;
+  padding: 1.35rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.step__n {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+  padding-top: 0.35rem;
+}
+
+.step__body h3 {
+  margin: 0 0 0.35rem;
+  font-family: var(--display);
+  font-variation-settings: "wdth" 108, "wght" 660;
+  font-size: 1.18rem;
+  letter-spacing: -0.01em;
+}
+
+.step__body p {
+  max-width: 34rem;
+  margin: 0 0 0.6rem;
+  color: var(--body);
+}
+
+.step__body code {
+  display: block;
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  color: var(--far);
+  overflow-wrap: anywhere;
+}
+
+.steps__loop {
+  display: grid;
+  grid-template-columns: 3.25rem 1fr;
+  gap: 1rem;
+  margin: 1.35rem 0 0;
+  max-width: 38rem;
+  color: var(--body);
+}
+
+.steps__loopmark {
+  font-family: var(--mono);
+  font-size: 1rem;
+  color: var(--near);
+  padding-top: 0.15rem;
+}
+
+/* ------------------------------------------------------------------- sim gate */
+/* Named `simgate`, not `gate` — Telemetry already owns `.gate` for its NPU badge. */
+
+.simgate {
+  max-width: 34rem;
+}
+
+.simgate__meter {
+  position: relative;
+  height: 2.75rem;
+  border: 1px solid var(--rule);
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0 calc(10% - 1px),
+    var(--rule) calc(10% - 1px) 10%
+  );
+}
+
+.simgate__meter i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--pass) * 100%);
+  background: rgba(34, 48, 126, 0.14);
+  border-right: 2px solid var(--far);
+}
+
+.simgate__legend {
+  margin: 0.85rem 0 0;
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+
+.simgate__legend b {
+  color: var(--far);
+  font-weight: 500;
+}
+
+/* ----------------------------------------------------------------- edge tiers */
+/* Named `edge-tiers` — Telemetry already owns `.tiers` for its silicon table. */
+
+.edge-tiers {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+}
+
+.edge-tier {
+  padding: 1.4rem 1.25rem;
+  background: var(--vellum);
+}
+
+.edge-tier__role {
+  display: block;
+  margin-bottom: 0.6rem;
+  font-family: var(--display);
+  font-variation-settings: "wdth" 62, "wght" 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--far);
+}
+
+.edge-tier p {
+  margin: 0;
+  font-size: 0.98rem;
+  color: var(--body);
+}
+
+/* ----------------------------------------------------------- code block + cta */
+
+.code {
+  margin: 0 0 2rem;
+  padding: 1.4rem 1.5rem;
+  overflow-x: auto;
+  background: var(--graphite);
+  color: #d8ded6;
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  line-height: 1.75;
+}
+
+.code code {
+  font: inherit;
+}
+
+.c-k { color: #9aa6ff; }
+.c-s { color: #6fd9c4; }
+.c-f { color: #ffab8c; }
+
+.cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.btn {
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  border: 1px solid var(--graphite);
+  color: var(--graphite);
+  font-family: var(--display);
+  font-variation-settings: "wdth" 84, "wght" 620;
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: background 140ms ease, color 140ms ease;
+}
+
+.btn:hover {
+  background: var(--graphite);
+  color: var(--vellum);
+}
+
+.btn--solid {
+  background: var(--graphite);
+  color: var(--vellum);
+}
+
+.btn--solid:hover {
+  background: var(--far);
+  border-color: var(--far);
+}
+
+/* ================================================================ the console */
+
+.console {
+  /* The console is instrumentation: everything in it is set in the data face. */
+  font-family: var(--mono);
+  font-size: 14px;
+  /* Tighter than a landing band — an operator wants the rail on screen, not air. */
+  padding: 3rem 0 4rem;
+}
+
+.console__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 2rem;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 2.5rem;
+}
+
+.console__head .title {
+  margin: 0;
+  font-size: clamp(1.5rem, 3vw, 2.4rem);
 }
 
 .link {
@@ -73,6 +665,7 @@ body {
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--muted);
+  white-space: nowrap;
 }
 
 .link::before {
@@ -86,17 +679,10 @@ body {
   vertical-align: middle;
 }
 
-.link.up {
-  color: var(--mint);
-}
+.link.up { color: var(--mint); }
+.link.down { color: var(--coral); }
 
-.link.down {
-  color: var(--coral);
-}
-
-/* -------------------------------------------------------------------- grid */
-
-main {
+.console__grid {
   display: grid;
   grid-template-columns: minmax(360px, 5fr) 7fr;
   gap: 2.5rem;
@@ -104,8 +690,8 @@ main {
 }
 
 @media (max-width: 1000px) {
-  main {
-    grid-template-columns: 1fr;
+  .console__grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -165,9 +751,7 @@ main {
 }
 
 @keyframes pulse {
-  50% {
-    opacity: 0.35;
-  }
+  50% { opacity: 0.35; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -191,9 +775,10 @@ main {
 
 .stage h3 {
   margin: 0;
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0.2em;
+  font-family: var(--display);
+  font-variation-settings: "wdth" 76, "wght" 640;
+  font-size: 0.9rem;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
@@ -222,7 +807,7 @@ main {
   width: 100%;
   padding: 0.5rem 0.65rem;
   border: 1px solid var(--line);
-  background: var(--panel);
+  background: var(--vellum);
   color: var(--text);
   font: inherit;
   font-size: 0.85rem;
@@ -230,19 +815,13 @@ main {
   text-transform: none;
 }
 
-.stage input:focus-visible,
-.stage select:focus-visible,
-.stage button:focus-visible {
-  outline: 2px solid var(--cyan);
-  outline-offset: 2px;
-}
-
 .stage button {
   padding: 0.5rem 1.1rem;
   border: 1px solid var(--text);
   background: transparent;
   color: var(--text);
-  font: inherit;
+  font-family: var(--display);
+  font-variation-settings: "wdth" 76, "wght" 620;
   font-size: 0.7rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -287,7 +866,7 @@ main {
   margin-top: 0.9rem;
   border-left: 2px solid var(--coral);
   padding: 0.5rem 0.75rem;
-  background: rgba(255, 107, 107, 0.07);
+  background: rgba(192, 51, 28, 0.06);
   font-size: 0.78rem;
 }
 
@@ -328,18 +907,20 @@ main {
   border: 1px solid var(--line);
   background: var(--panel);
   padding: 1.25rem;
+  min-width: 0;
 }
 
 .panel h2 {
   margin: 0 0 1rem;
+  font-family: var(--display);
+  font-variation-settings: "wdth" 62, "wght" 620;
   color: var(--muted);
-  font-size: 0.65rem;
-  font-weight: 500;
+  font-size: 0.68rem;
   letter-spacing: 0.22em;
   text-transform: uppercase;
 }
 
-/* ------------------------------------------------------------- plan view */
+/* --------------------------------------------------------------- plan view */
 
 svg.plan {
   display: block;
@@ -365,13 +946,13 @@ svg.plan {
 }
 
 .substrate rect {
-  fill: rgba(123, 211, 247, 0.05);
+  fill: rgba(34, 48, 126, 0.05);
   stroke: var(--line);
 }
 
 .prop rect {
-  fill: rgba(123, 211, 247, 0.14);
-  stroke: var(--cyan);
+  fill: rgba(20, 176, 154, 0.16);
+  stroke: var(--mid);
 }
 
 .prop text {
@@ -426,15 +1007,203 @@ svg.plan {
   color: var(--amber);
 }
 
-.jobs li.done .status {
-  color: var(--mint);
-}
-
-.jobs li.failed .status {
-  color: var(--coral);
-}
+.jobs li.done .status { color: var(--mint); }
+.jobs li.failed .status { color: var(--coral); }
 
 .jobs .detail {
   color: var(--muted);
   overflow-wrap: anywhere;
+}
+
+/* --------------------------------------------------------------- telemetry */
+
+.panel.wide {
+  grid-column: 1 / -1;
+}
+
+.telemetry h3 {
+  font-family: var(--display);
+  font-variation-settings: "wdth" 62, "wght" 620;
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 0.75rem;
+}
+
+.tiers {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+  margin-bottom: 1rem;
+}
+
+.tiers th {
+  text-align: left;
+  color: var(--muted);
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.68rem;
+  padding: 0.3rem 0.6rem 0.3rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.tiers td {
+  padding: 0.35rem 0.6rem 0.35rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.unit-npu { color: var(--mint); }
+/* Stated plainly: the QRB2210 has no tensor NPU, and the demo must not imply one. */
+.unit-cpu { color: var(--muted); }
+
+.bench-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 0.75rem;
+}
+
+.bench-card {
+  border: 1px solid var(--line);
+  background: var(--ink);
+  padding: 0.75rem;
+}
+
+.bench-card header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.bench-card h4 {
+  margin: 0;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.gate {
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.gate.pass { color: var(--mint); }
+.gate.fail { color: var(--amber); }
+
+.bench-card dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.15rem 0.75rem;
+  margin: 0 0 0.6rem;
+  font-size: 0.74rem;
+}
+
+.bench-card dt { color: var(--muted); }
+.bench-card dd { margin: 0; overflow-wrap: anywhere; }
+
+.bar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+  font-size: 0.72rem;
+}
+
+.bar-label {
+  color: var(--muted);
+  width: 2.2rem;
+  flex-shrink: 0;
+}
+
+.bar {
+  height: 0.55rem;
+  min-width: 2px;
+}
+
+.bar.npu { background: var(--mint); }
+.bar.cpu { background: var(--muted); }
+
+.bar-value {
+  color: var(--text);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.speedup {
+  color: var(--mint);
+  font-size: 0.74rem;
+  margin: 0.35rem 0 0;
+}
+
+.bench-warn { color: var(--amber); font-size: 0.72rem; margin: 0.4rem 0 0; }
+.bench-error { color: var(--coral); font-size: 0.74rem; margin: 0.4rem 0 0; }
+
+.bench-empty, .bench-source {
+  color: var(--muted);
+  font-size: 0.74rem;
+  margin: 0.5rem 0 0;
+}
+
+.bench-empty code {
+  color: var(--cyan);
+  overflow-wrap: anywhere;
+}
+
+.tail { font-size: 0.72rem; color: var(--text); margin: 0 0 0.4rem; }
+.muted { color: var(--muted); }
+
+.fallbacks { font-size: 0.72rem; margin-bottom: 0.5rem; }
+.fallbacks summary { color: var(--amber); cursor: pointer; }
+.fallbacks ul { list-style: none; padding: 0.4rem 0 0; margin: 0; }
+.fallbacks li { padding: 0.1rem 0; overflow-wrap: anywhere; }
+.fallbacks code { color: var(--cyan); }
+
+/* ----------------------------------------------------------------- responsive */
+
+@media (max-width: 900px) {
+  .band {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2rem;
+  }
+
+  .notes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 1.25rem;
+  }
+
+  .notes p {
+    margin-bottom: 0;
+  }
+
+  .recon {
+    height: 460vh;
+  }
+
+  .recon__readout {
+    display: none;
+  }
+
+  .recon__title,
+  .recon__caption {
+    bottom: 8vh;
+  }
+
+  .masthead__meta {
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 560px) {
+  .step,
+  .steps__loop {
+    grid-template-columns: 2.25rem 1fr;
+  }
+
+  .jobs li {
+    grid-template-columns: 1fr;
+    gap: 0.15rem;
+  }
 }

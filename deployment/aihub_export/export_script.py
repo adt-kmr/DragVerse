@@ -25,7 +25,13 @@ def _measure_latency_ms(policy: LinearPolicy, iterations: int = 2000) -> float:
 
 
 def _write_bundle(policy: LinearPolicy, out_dir: str, device_label: str,
-                  backend: str, fmt: str) -> dict:
+                  backend: str, fmt: str, op_coverage: float | None = None) -> dict:
+    """Package a quantized policy.
+
+    `op_coverage` is None unless a real profiler measured it. A locally-quantized bundle
+    has never been near an NPU, so it has no op coverage to report — reporting 100.0 here
+    would put an unmeasured number into the API response and the artifacts table.
+    """
     os.makedirs(out_dir, exist_ok=True)
     quantized = policy.quantize_int8()
 
@@ -42,9 +48,10 @@ def _write_bundle(policy: LinearPolicy, out_dir: str, device_label: str,
         "backend": backend,
         "device_label": device_label,
         "precision": "int8",
-        # Every op in a linear policy is matmul + add, both natively supported.
-        "op_coverage": 100.0,
+        "op_coverage": op_coverage,
         "est_latency_ms": round(_measure_latency_ms(policy), 4),
+        # Host-CPU numpy timing, not on-device. Never present this as a Hexagon number.
+        "latency_source": "host-cpu",
         "obs_dim": policy.obs_dim,
         "act_dim": policy.act_dim,
     }
