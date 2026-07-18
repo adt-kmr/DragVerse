@@ -1,10 +1,11 @@
 import numpy as np
+import pytest
 
 from semantic.service.inference import segment_image, segment_points
 
 
 def grid(x0, x1, y0, y1, z0, z1, step=0.02):
-    """Dense axis-aligned box of points, sampled finer than the 0.05 m voxel."""
+    """Dense axis-aligned box of points."""
     ax = np.arange(x0, x1 + 1e-9, step)
     ay = np.arange(y0, y1 + 1e-9, step)
     az = np.arange(z0, z1 + 1e-9, step)
@@ -48,6 +49,20 @@ def test_table_bbox_is_where_we_put_it():
 def test_ids_are_unique():
     objects = segment_points(scene())
     assert len({o["id"] for o in objects}) == len(objects)
+
+
+@pytest.mark.parametrize("step", [0.02, 0.05, 0.08, 0.12])
+def test_sparse_clouds_do_not_shatter_into_phantom_objects(step):
+    """A surface sampled at or below the voxel size must stay one object.
+
+    Regression: with a fixed voxel, neighbouring samples of a sparse cloud land two
+    voxels apart, so a single wall fragmented into hundreds of 'chair'/'shelf' objects
+    that then became navmesh obstacles.
+    """
+    floor = grid(0, 4, 0, 4, 0, 0, step)
+    wall = grid(0, 0.1, 0, 4, 0, 2.5, step)
+    objects = segment_points(np.concatenate([floor, wall]))
+    assert labels_of(objects) == ["floor", "wall"]
 
 
 def test_empty_cloud_returns_nothing():

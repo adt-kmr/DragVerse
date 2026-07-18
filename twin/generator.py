@@ -97,6 +97,25 @@ def is_blocked(navmesh: dict, x: float, y: float) -> bool:
     return bool(navmesh["grid"][row][col])
 
 
+def nearest_free(navmesh: dict, x: float, y: float):
+    """Closest traversable point to (x, y), or None if the navmesh is fully blocked.
+
+    Navigating "to the table" cannot mean the table's centre — that cell is occupied by
+    the table. It means the nearest spot a robot can actually stand.
+    """
+    cell, (x0, y0) = navmesh["cell"], navmesh["origin"]
+    best, best_d2 = None, None
+    for row in range(navmesh["height"]):
+        for col in range(navmesh["width"]):
+            if navmesh["grid"][row][col]:
+                continue
+            cx, cy = x0 + (col + 0.5) * cell, y0 + (row + 0.5) * cell
+            d2 = (cx - x) ** 2 + (cy - y) ** 2
+            if best_d2 is None or d2 < best_d2:
+                best, best_d2 = (cx, cy), d2
+    return best
+
+
 def generate_twin(objects: list, out_dir: str, cell: float = 0.1) -> dict:
     """Write scene.json + navmesh.json for the Unity batch-mode generator."""
     os.makedirs(out_dir, exist_ok=True)
