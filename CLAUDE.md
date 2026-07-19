@@ -66,6 +66,7 @@ Directory names ARE the architecture:
 - `reconstruction/fast_path/` — Open3D TSDF fusion (fast, lower fidelity).
   `reconstruction/fidelity_path/` — COLMAP + gsplat/nerfstudio glue (slow, high fidelity).
   Two paths are a deliberate tradeoff (speed vs. quality), not redundant code.
+  Phase B (v3 §4) adds Scaniverse-fed ingestion and structure-mask refinement (`capture/scaniverse.py`, `reconstruction/splat/refine.py`); this is explicitly hybrid (AI-Hub segmentation/voxel-dedup, not full-GPU splatting per v3 §4) — frame as such in demos.
 - `semantic/service/` — YOLO-World + MobileSAM inference; `inference.py` holds the
   `LABEL_ONTOLOGY` (wall, floor, door, chair, robot, ...) that `twin/rules/mapping.yaml`
   maps to Unity prefabs + collider types.
