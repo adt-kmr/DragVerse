@@ -1355,3 +1355,56 @@ svg.plan {
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
+
+.robot-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.robot-option {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1.25rem;
+  border: var(--hair) solid var(--line);
+  background: var(--vellum);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: var(--ui-base);
+  cursor: pointer;
+  transition: background 120ms, border-color 120ms;
+  text-align: left;
+}
+
+.robot-option:hover {
+  background: var(--panel);
+  border-color: var(--muted);
+}
+
+.robot-option.is-selected {
+  background: var(--near-ink);
+  border-color: var(--near-ink);
+  color: var(--vellum);
+}
+
+.robot-option.is-selected strong {
+  color: var(--vellum);
+}
+
+.robot-option.is-selected p {
+  color: var(--vellum);
+}
+
+.robot-option strong {
+  font-weight: 700;
+  font-size: var(--ui-lg);
+}
+
+.robot-option p {
+  margin: 0;
+  font-size: var(--ui-sm);
+  line-height: 1.5;
+  color: var(--body);
+}
