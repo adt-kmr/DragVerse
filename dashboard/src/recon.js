@@ -17,6 +17,7 @@ import { createLighting } from "./recon/lighting.js";
 import { createPointCloud } from "./recon/pointcloud.js";
 import { createPipeline } from "./recon/pipeline.js";
 import { createLabelLayer } from "./recon/labels.js";
+import { planRoute } from "./recon/planner.js";
 import { Line2 } from "three/examples/jsm/lines/Line2.js";
 import { LineGeometry } from "three/examples/jsm/lines/LineGeometry.js";
 
@@ -46,12 +47,36 @@ const PROPS = [
   { label: "robot", x: 1.0, y: 1.0, z: 0, w: 0.45, d: 0.45, h: 0.55, tdx: 0, tdy: -18 },
 ];
 
-const PATH = [
-  [1.22, 1.22],
-  [1.7, 1.85],
-  [2.7, 1.95],
-  [3.85, 2.05],
+// The robot's dock (matches the "robot" PROP's own bbox center below) and a delivery
+// point on the far side of the table+chair pair — chosen specifically so the straight
+// line between them cuts through both, giving the planner something real to route
+// around instead of an illustrative bend nobody computed.
+const ROBOT_START = [1.225, 1.225];
+const DELIVERY_GOAL = [6.51, 3.43];
+
+// Computed once, at module load, against the same PROPS the room is built from — not
+// hand-picked waypoints. See recon/planner.js for the visibility-graph search.
+const { route: PATH, direct: DIRECT_PATH, blocked: BLOCKED } = planRoute(ROBOT_START, DELIVERY_GOAL, PROPS);
+
+// The on-canvas decision log for the Train stage: what the planner sensed and did,
+// nearest obstacle first, mono-aligned so it reads as instrument output.
+const LOG_LABEL_WIDTH = 11;
+export const PLAN_LOG = [
+  `${"SENSING".padEnd(LOG_LABEL_WIDTH)}…`,
+  ...BLOCKED.map(({ prop, dist }) => `${"OBSTACLE".padEnd(LOG_LABEL_WIDTH)}${prop.label} · ${dist.toFixed(1)}m`),
+  `${"REPLANNING".padEnd(LOG_LABEL_WIDTH)}…`,
+  `${"ROUTE".padEnd(LOG_LABEL_WIDTH)}clear`,
 ];
+
+// Phase 4's ("Train") timeline, t in 0..1: the direct line appears, sensing cycles
+// through BLOCKED nearest-first, the direct line is rejected, and the real route draws
+// in over what's left. Phase 5 ("Deploy") is the drive along that same route.
+const GHOST_IN_END = 0.15;
+const SENSE_START = 0.2;
+const SENSE_END = 0.56;
+const REPLAN_AT = 0.58;
+const GHOST_OUT_END = 0.64;
+const DRAW_START = 0.64;
 
 const LABEL_COLOR = {
   floor: "#a2ab9e",
@@ -240,7 +265,13 @@ export function createScene(canvas) {
 
   // Fat-line (LineMaterial) instances need `.resolution` kept in sync with the canvas'
   // pixel size — collected here so resize() can update all of them in one place.
-  const lineMaterials = [signal.orangeLine, signal.indigoLine, roomShell.edgeMaterial, ...objects.map((o) => o.edgeMaterial)];
+  const lineMaterials = [
+    signal.orangeLine,
+    signal.indigoLine,
+    signal.ghostLine,
+    roomShell.edgeMaterial,
+    ...objects.map((o) => o.edgeMaterial),
+  ];
 
   const cloud = createPointCloud(CLOUD, ROOM, LABEL_COLOR, mulberry32(9));
   content.add(cloud.points);
@@ -277,6 +308,76 @@ export function createScene(canvas) {
     for (const [x, y] of verts) flat.push(x, y, 0.02);
     pathGeo.setPositions(flat);
     pathLine.computeLineDistances();
+  }
+
+  // The direct line the planner considered first and rejected — drawn once (it never
+  // grows), just faded in, held, then faded out as the real route takes over. Sits a
+  // hair below the real path in z so the two never z-fight during the crossfade.
+  const ghostGeo = new LineGeometry();
+  ghostGeo.setPositions([DIRECT_PATH[0][0], DIRECT_PATH[0][1], 0.019, DIRECT_PATH[1][0], DIRECT_PATH[1][1], 0.019]);
+  const ghostLine = new Line2(ghostGeo, signal.ghostLine);
+  ghostLine.computeLineDistances();
+  ghostLine.visible = false;
+  ghostLine.frustumCulled = false;
+  content.add(ghostLine);
+
+  // Sensing ray + ring: one shared pair, repositioned onto whichever blocked obstacle is
+  // "active" this instant (see sensePhase()) rather than one mesh per obstacle — the
+  // choreography only ever highlights one at a time, so there's nothing to gain from more.
+  const senseRayGeo = new LineGeometry();
+  senseRayGeo.setPositions([0, 0, 0.021, 0, 0, 0.021]);
+  const senseRay = new Line2(senseRayGeo, signal.orangeLine);
+  senseRay.visible = false;
+  senseRay.frustumCulled = false;
+  content.add(senseRay);
+
+  // A lock-on reticle, built as a fat-line loop (same Line2 technique as the traced path)
+  // rather than a filled ring mesh — floats above whichever obstacle is "active", clear
+  // of every object's own silhouette so nothing in the room can occlude it.
+  const RING_SEGMENTS = 40;
+  const senseRingGeo = new LineGeometry();
+  {
+    const unit = [];
+    for (let i = 0; i <= RING_SEGMENTS; i++) {
+      const a = (i / RING_SEGMENTS) * Math.PI * 2;
+      unit.push(Math.cos(a), Math.sin(a), 0);
+    }
+    senseRingGeo.setPositions(unit);
+  }
+  const senseRing = new Line2(senseRingGeo, signal.orangeLine);
+  senseRing.computeLineDistances();
+  senseRing.visible = false;
+  senseRing.frustumCulled = false;
+  content.add(senseRing);
+
+  /** Which blocked obstacle (if any) is being "sensed" at this instant within phase 4,
+      and how visible its ring/ray should be — fades in, holds, fades out, one obstacle
+      at a time, in nearest-first order. */
+  function sensePhase(t) {
+    const n = BLOCKED.length;
+    if (!n || t < SENSE_START || t > SENSE_END) return null;
+    const slot = (SENSE_END - SENSE_START) / n;
+    const index = Math.min(n - 1, Math.floor((t - SENSE_START) / slot));
+    const within = clamp((t - SENSE_START - index * slot) / slot, 0, 1);
+    const alpha = within < 0.25 ? smooth(within / 0.25) : within > 0.75 ? smooth((1 - within) / 0.25) : 1;
+    return { index, alpha };
+  }
+
+  /** Reveal alphas for PLAN_LOG's lines: SENSING, one per blocked obstacle in order,
+      REPLANNING, ROUTE CLEAR. Each line reveals once and holds — an accumulating log,
+      not a status line that overwrites itself. */
+  function planLogAlphas(t) {
+    const n = BLOCKED.length;
+    const a = new Array(PLAN_LOG.length).fill(0);
+    a[0] = smooth(clamp((t - 0.1) / 0.08, 0, 1));
+    const slot = (SENSE_END - SENSE_START) / Math.max(n, 1);
+    for (let i = 0; i < n; i++) {
+      const revealAt = SENSE_START + i * slot + slot * 0.15;
+      a[1 + i] = smooth(clamp((t - revealAt) / 0.05, 0, 1));
+    }
+    a[n + 1] = smooth(clamp((t - REPLAN_AT) / 0.05, 0, 1));
+    a[n + 2] = smooth(clamp((t - 0.92) / 0.06, 0, 1));
+    return a;
   }
 
   // Phase 5: the robot prop itself drives the route — no separate abstract marker. It
@@ -327,7 +428,7 @@ export function createScene(canvas) {
     // Anchored to the beacon's height, not the body's — the beacon is the part that's
     // actually always visible (see the note in geometry.js's buildRobot), so that's what
     // the tag's leader line should point at.
-    robotTagAnchor.set(wx, wy, robotObj.prop.h * 3);
+    robotTagAnchor.set(wx, wy, robotObj.prop.h * 4);
     content.localToWorld(robotTagAnchor);
     labels.setAnchorOverride(robotIndex, robotTagAnchor);
   }
@@ -429,7 +530,7 @@ export function createScene(canvas) {
   }
 
   function render(progress) {
-    if (!W || !H) return { phase: 0, points: 0, objects: 0, rest: true };
+    if (!W || !H) return { phase: 0, points: 0, objects: 0, rest: true, plan: new Array(PLAN_LOG.length).fill(0) };
 
     const rest = progress <= 0.1;
     const run = clamp((progress - 0.1) / 0.86, 0, 1);
@@ -521,15 +622,83 @@ export function createScene(canvas) {
       });
     }
 
+    let planAlphas;
     if (phase === 4) {
-      pathLine.visible = true;
-      updatePathVertices(clamp((t - 0.15) / 0.85, 0, 1));
+      // The planner's own beat: try the direct line, sense what's in the way one
+      // obstacle at a time, reject the direct line, then draw the route it actually
+      // computed. Skips straight to drawing if the scene ever has no BLOCKED obstacles.
+      if (BLOCKED.length) {
+        const ghostAlpha =
+          t < GHOST_IN_END
+            ? smooth(t / GHOST_IN_END)
+            : t < REPLAN_AT
+              ? 1
+              : t < GHOST_OUT_END
+                ? 1 - smooth((t - REPLAN_AT) / (GHOST_OUT_END - REPLAN_AT))
+                : 0;
+        ghostLine.visible = ghostAlpha > 0.01;
+        signal.ghostLine.opacity = ghostAlpha * 0.85;
+
+        const sense = sensePhase(t);
+        if (sense) {
+          const { prop } = BLOCKED[sense.index];
+          const cx = prop.x + prop.w / 2;
+          const cy = prop.y + prop.d / 2;
+          // A floor-level ring sitting flush against the object's own footprint reads as
+          // a shadow decal and is routinely occluded by the object's own body from this
+          // isometric angle. Floating a small lock-on reticle above the obstacle instead
+          // — clear of every object's silhouette, unmistakably a sensor reading rather
+          // than ground decoration.
+          const cz = prop.z + prop.h + 0.4;
+          const r = 0.26;
+
+          // senseRing and senseRay share signal.orangeLine, so one opacity write covers
+          // both — they only ever appear together.
+          signal.orangeLine.opacity = sense.alpha * 0.85;
+
+          senseRing.visible = true;
+          senseRing.position.set(cx, cy, cz);
+          senseRing.scale.setScalar(r);
+
+          senseRay.visible = true;
+          senseRayGeo.setPositions([ROBOT_START[0], ROBOT_START[1], robotObj.prop.h + 0.1, cx, cy, cz]);
+          senseRay.computeLineDistances();
+        } else {
+          senseRing.visible = false;
+          senseRay.visible = false;
+        }
+
+        if (t >= DRAW_START) {
+          pathLine.visible = true;
+          updatePathVertices(clamp((t - DRAW_START) / (1 - DRAW_START), 0, 1));
+        } else {
+          pathLine.visible = false;
+        }
+      } else {
+        ghostLine.visible = false;
+        senseRing.visible = false;
+        senseRay.visible = false;
+        pathLine.visible = true;
+        updatePathVertices(clamp((t - 0.15) / 0.85, 0, 1));
+      }
+      planAlphas = planLogAlphas(t);
     } else if (phase === 5) {
       pathLine.visible = true;
       updatePathVertices(1);
+      ghostLine.visible = false;
+      senseRing.visible = false;
+      senseRay.visible = false;
+      // The log stays put through the drive — it's the record of the decision the robot
+      // is now executing, not a phase-4-only status line.
+      planAlphas = new Array(PLAN_LOG.length).fill(1);
     } else {
       pathLine.visible = false;
+      ghostLine.visible = false;
+      senseRing.visible = false;
+      senseRay.visible = false;
+      planAlphas = new Array(PLAN_LOG.length).fill(0);
     }
+
     if (phase === 5) {
       const qt = clamp((t - 0.25) / 0.75, 0, 1);
       quantize.visible = qt > 0.01;
@@ -549,7 +718,7 @@ export function createScene(canvas) {
 
     pipeline.render();
 
-    return { phase, points: countVisible(sweep), objects: phase >= 2 ? objects.length : 0, rest };
+    return { phase, points: countVisible(sweep), objects: phase >= 2 ? objects.length : 0, rest, plan: planAlphas };
   }
 
   function dispose() {

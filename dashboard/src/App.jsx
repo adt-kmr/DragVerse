@@ -22,7 +22,7 @@ export default function App() {
 
       <header className="masthead">
         <Link className="masthead__mark" to="/">
-          TwinForge
+          DragVerse
         </Link>
 
         <nav className="masthead__nav">
@@ -33,27 +33,12 @@ export default function App() {
             Console
           </Link>
         </nav>
-
-        <dl className="masthead__meta">
-          <div>
-            <dt>Sheet</dt>
-            <dd>{onConsole ? "02 / 02" : "01 / 02"}</dd>
-          </div>
-          <div>
-            <dt>Rev</dt>
-            <dd>0.1.0</dd>
-          </div>
-          <div>
-            <dt>Field</dt>
-            <dd>Noida · Jul 2026</dd>
-          </div>
-        </dl>
       </header>
 
       <main>{onConsole ? <Console /> : <Landing />}</main>
 
       <footer className="stamp">
-        <span>TwinForge</span>
+        <span>DragVerse</span>
         <span>Edge-first Physical AI operating layer</span>
         <span>Snapdragon Multiverse · Noida · July 2026</span>
       </footer>

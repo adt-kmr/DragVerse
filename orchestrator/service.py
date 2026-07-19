@@ -7,17 +7,20 @@ what makes the demo debuggable; the job registry is already in place for when it
 import asyncio
 import json
 import os
+import shutil
 
 import numpy as np
 from fastapi import Body, FastAPI, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 
+from capture.scaniverse import DEFERRED_EXTS, SUPPORTED_EXTS, ingest_export
 from capture.service import store
 from deployment.aihub_export.export_script import DEFAULT_DEVICE, export_model
 from orchestrator import db, jobs
-from policy.evaluate import SIM_GATE, evaluate, inflate, record_demos
-from policy.finetune.train_bc import finetune_bc, make_baseline
+from policy.evaluate import SIM_GATE, evaluate, free_cells, inflate, record_demos
+from policy.finetune.train_bc import LinearPolicy, finetune_bc, make_baseline
 from reconstruction.reconstruct import read_ply, reconstruct
 from robot.adapters.registry import get_robot
+from robot.policy_runner import load_int8_policy, run_policy
 from sarvam.task_engine.graph import TaskGraph
 from sarvam.task_engine.provider import get_planner
 from semantic.service.inference import segment_points
@@ -69,6 +72,58 @@ async def capture(file: UploadFile | None = None, scan_id: str | None = None, in
     if file is not None:
         store.save_chunk(scan_id, index, await file.read())
     return {"scan_id": scan_id, **store.status(scan_id)}
+
+
+@app.post("/capture/import")
+@app.post("/capture/{scan_id}/import")
+async def capture_import(scan_id: str | None = None, file: UploadFile | None = None,
+                         export_path: str | None = None, device: str = "scaniverse"):
+    """Open a scan from a finished export (Scaniverse .ply/.obj) instead of frame chunks.
+
+    Two callers, one route: the dashboard posts the file itself, while a server-side
+    batch run can name a path it already has on disk.
+    """
+    if (file is None) == (export_path is None):
+        raise HTTPException(400, "provide exactly one of: file upload, export_path")
+
+    conn = _db()
+    if scan_id is None:
+        scan_id = db.new_id()
+    if db.get(conn, "scans", scan_id) is None:
+        db.insert(conn, "scans", id=scan_id, device=device, status="uploading")
+
+    source_path = export_path
+    if file is not None:
+        ext = os.path.splitext(file.filename or "")[1].lower()
+        if ext not in SUPPORTED_EXTS and ext not in DEFERRED_EXTS:
+            raise HTTPException(400, f"unsupported export type {ext!r}; "
+                                     f"expected one of {', '.join(SUPPORTED_EXTS)}")
+        # Stream to disk: scans run to hundreds of MB, too big to hold in memory.
+        source_path = os.path.join(store.scan_dir(scan_id), f"upload{ext}")
+        with open(source_path, "wb") as out:
+            shutil.copyfileobj(file.file, out)
+
+    job_id = jobs.create_job("capture_import")
+    try:
+        result = ingest_export(source_path, store.scan_dir(scan_id))
+    except NotImplementedError as exc:
+        jobs.finish_job(job_id, ok=False, detail=str(exc))
+        raise HTTPException(501, str(exc))
+    except (ValueError, OSError) as exc:
+        jobs.finish_job(job_id, ok=False, detail=str(exc))
+        raise HTTPException(400, str(exc))
+    finally:
+        # The raw upload is redundant once normalised; the canonical PLY is the artifact.
+        if file is not None and os.path.exists(source_path):
+            os.remove(source_path)
+
+    store.complete(scan_id)
+    conn.execute("UPDATE scans SET status = 'complete' WHERE id = ?", (scan_id,))
+    conn.commit()
+    jobs.finish_job(job_id, detail=scan_id)
+    return {"scan_id": scan_id, "status": "complete", "frame_count": 0,
+            "point_count": result["point_count"], "source": result["source"],
+            "format": result["format"], "job_id": job_id}
 
 
 @app.post("/capture/{scan_id}/complete")
@@ -145,7 +200,7 @@ def _objects_for(conn, mesh_id: str) -> list:
 def generate_twin_endpoint(body: dict = Body(...)):
     mesh_id = body["mesh_id"]
     conn = _db()
-    _need(conn, "meshes", mesh_id)
+    mesh = _need(conn, "meshes", mesh_id)
     job_id = jobs.create_job("twin_generate")
 
     objects = _objects_for(conn, body.get("objects_id") or mesh_id)
@@ -154,7 +209,9 @@ def generate_twin_endpoint(body: dict = Body(...)):
         raise HTTPException(
             400, f"no semantic objects for mesh {mesh_id!r}; POST /segment first")
 
-    result = generate_twin(objects, artifacts_dir("twins", mesh_id))
+    # The cloud, not the bounding boxes, decides what the robot can drive through.
+    points, _ = read_ply(mesh["ply_url"])
+    result = generate_twin(objects, artifacts_dir("twins", mesh_id), points=points)
     twin_id = db.insert(conn, "twins", mesh_id=mesh_id,
                         unity_scene_url=result["scene_path"],
                         navmesh_url=result["navmesh_path"])
@@ -301,6 +358,31 @@ def benchmarks():
 
 # ---------------------------------------------------------------------------- deploy
 
+def _start_pose(navmesh: dict, goal):
+    """Farthest cell the robot fits in from the goal — the longest drive the room allows.
+
+    Starting at the origin would usually start inside a wall, and the run would be
+    refused before it began.
+    """
+    cells = free_cells(inflate(navmesh))
+    return max(cells, key=lambda c: (c[0] - goal[0]) ** 2 + (c[1] - goal[1]) ** 2,
+               default=None)
+
+
+def _deployed_policy(artifact_path: str, checkpoint_path: str):
+    """The int8 bundle that actually ships, not the float checkpoint it came from.
+
+    Both are .npz; only the quantized one carries the scales, which is what tells them
+    apart. Driving the float weights here would make the trace evidence for a policy
+    that never reaches the device.
+    """
+    if artifact_path.endswith(".npz"):
+        with np.load(artifact_path) as npz:
+            if "W_scale" in npz:
+                return load_int8_policy(artifact_path)
+    return LinearPolicy.load(checkpoint_path)
+
+
 @app.post("/deploy")
 def deploy(body: dict = Body(...)):
     artifact_id = body["artifact_id"]
@@ -326,18 +408,29 @@ def deploy(body: dict = Body(...)):
 
     robot = get_robot(kind, navmesh=navmesh) if kind == "sim" else get_robot(kind)
     connected = robot.connect()
-    trace = []
+    trace, telemetry, reached = [], {}, False
     if connected:
         goal, _ = _goal_for(conn, twin, graph)
-        if goal:
-            trace = robot.execute_path([(goal[0], goal[1], 0.0)])
+        start = _start_pose(navmesh, goal) if goal else None
+        if start:
+            # Drive the route under the deployed policy rather than teleporting to the
+            # goal: the trace is only evidence the twin works if the robot had to get
+            # there through the room's actual geometry.
+            result = run_policy(
+                robot, _deployed_policy(artifact["artifact_url"],
+                                        policy_row["finetuned_ckpt_url"]),
+                navmesh, goal, start=start)
+            trace = result.pop("trace", [])
+            reached = result.pop("reached", False)
+            telemetry = result
 
-    status = "running" if connected and trace else ("connected" if connected else "offline")
+    status = "running" if reached else ("connected" if connected else "offline")
     deployment_id = db.insert(conn, "deployments", artifact_id=artifact_id,
                               robot_id=robot_id, status=status)
-    jobs.finish_job(job_id, ok=connected, detail=status)
+    jobs.finish_job(job_id, ok=reached, detail=status)
     return {"deployment_id": deployment_id, "job_id": job_id, "status": status,
-            "robot_id": robot_id, "pose_trace": [list(p) for p in trace]}
+            "robot_id": robot_id, "reached": reached,
+            "pose_trace": [list(p) for p in trace], **telemetry}
 
 
 # ------------------------------------------------------------------------------ sync
