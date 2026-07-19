@@ -443,6 +443,46 @@ body {
   color: var(--far);
 }
 
+/* In-scene object tags (phase 3+) — real DOM text over the WebGL canvas via CSS2DRenderer,
+   replacing baked ctx.fillText. Sizes match the pre-upgrade canvas labels (11px/9.5px):
+   these are graphic/instrument callouts inside the illustration, not page body text, so the
+   14px floor doesn't apply here any more than it did to the canvas-drawn version. */
+.recon__tags {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.recon__tag {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.recon__tag-label {
+  display: block;
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--graphite);
+}
+
+.recon__tag-collider {
+  display: block;
+  font-family: var(--mono);
+  font-size: 0.5938rem;
+  color: var(--muted);
+}
+
+.recon__tag-leader {
+  stroke: var(--muted);
+  stroke-opacity: 0.5;
+  stroke-width: 1;
+}
+
 /* ============================================================== landing: bands */
 
 .band {
