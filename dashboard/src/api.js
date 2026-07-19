@@ -26,6 +26,11 @@ const post = (path, body) =>
 
 export const health = () => send("/health");
 export const scanStatus = (scanId) => send(`/capture/${scanId}`);
+// Scaniverse .ply ingestion (Task 6) — an alternative to the chunked ARCore upload
+// above; export_path is a path the orchestrator process can read (same machine or
+// shared volume), not a browser-uploaded blob.
+export const captureImport = (scanId, exportPath) =>
+  post(`/capture/${scanId}/import`, { export_path: exportPath });
 export const reconstruct = (scan_id, mode) => post("/reconstruct", { scan_id, mode });
 export const segment = (mesh_id) => post("/segment", { mesh_id });
 export const generateTwin = (mesh_id, objects_id) =>
