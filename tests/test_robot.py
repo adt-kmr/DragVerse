@@ -44,6 +44,43 @@ def test_unoq_reports_failure_instead_of_raising_without_hardware():
     assert robot.move(1.0, 1.0) is False  # no link -> command refused, not silently lost
 
 
+def test_unoq_connect_reads_aruco_marker_for_boot_alignment(tmp_path):
+    """Boot-time alignment: connect() observes the same marker the twin was anchored
+    to, so the robot's frame lines up with the twin's frame -- independent of whether
+    the serial link itself is available (no hardware here, marker step still runs)."""
+    cv2 = pytest.importorskip("cv2")
+
+    aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
+    marker_image = cv2.aruco.generateImageMarker(aruco_dict, 0, 300, borderBits=1)
+    # Quiet-zone padding, same as tests/test_aruco.py -- detection needs margin.
+    padded = cv2.copyMakeBorder(marker_image, 50, 50, 50, 50, cv2.BORDER_CONSTANT, value=255)
+    image_path = tmp_path / "marker.png"
+    cv2.imwrite(str(image_path), padded)
+
+    robot = UnoQRobot(port="/dev/definitely-not-a-real-port")
+    result = robot.connect(aruco_image_path=str(image_path))
+
+    assert result is False  # still no serial hardware -> unrelated to the marker step
+    assert robot.anchor_transform is not None
+    transform = robot.anchor_transform
+    assert len(transform) == 4 and all(len(row) == 4 for row in transform)
+
+
+def test_unoq_connect_with_aruco_but_no_cv2_degrades_gracefully(tmp_path):
+    """cv2 is genuinely not installed in this venv, so detect_marker raises a real
+    RuntimeError here -- no mocking needed. connect() must still run its normal
+    pyserial-or-False logic rather than propagating, matching the orchestrator's
+    /generate-twin degrade convention for the same case."""
+    with pytest.raises(ModuleNotFoundError):
+        import cv2  # noqa: F401
+
+    robot = UnoQRobot(port="/dev/definitely-not-a-real-port")
+    result = robot.connect(aruco_image_path=str(tmp_path / "marker.png"))
+
+    assert result is False  # no hardware -> same as the no-aruco-arg case
+    assert robot.anchor_transform is None
+
+
 def test_registry_builds_adapters():
     assert isinstance(get_robot("sim"), SimRobot)
     assert isinstance(get_robot("unoq"), UnoQRobot)

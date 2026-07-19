@@ -5,6 +5,8 @@ actual motor PWM. Section 4/13 of the blueprint.
 """
 import json
 
+from capture.aruco import detect_marker
+
 from .base import MAX_LINEAR_SPEED, TwinForgeRobot
 
 
@@ -18,9 +20,27 @@ class UnoQRobot(TwinForgeRobot):
         self.speed_scale = speed_scale
         self.serial = None
         self.pose = (0.0, 0.0, 0.0)
+        self.anchor_transform = None
 
-    def connect(self) -> bool:
-        """Open the serial link; False (not an exception) when there is no hardware."""
+    def connect(self, aruco_image_path: str = None) -> bool:
+        """Open the serial link; False (not an exception) when there is no hardware.
+
+        aruco_image_path is optional boot-time alignment: the buggy observes the same
+        marker the twin was anchored to (§3.2 item 4), so its frame lines up with the
+        twin's frame. This is best-effort metadata gathered during connect, not a
+        precondition for it -- a missing cv2 or an undetected marker must not make
+        connect() report failure; only the serial link determines that.
+        """
+        if aruco_image_path:
+            try:
+                marker = detect_marker(aruco_image_path)
+            except RuntimeError:
+                # cv2 (the optional 'vision' extra) isn't installed -- degrade
+                # gracefully, same convention as orchestrator's /generate-twin.
+                marker = None
+            if marker is not None:
+                self.anchor_transform = marker["transform"]
+
         try:
             import serial
         except ImportError:
