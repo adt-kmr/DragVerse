@@ -25,6 +25,9 @@ MIN_CLUSTER_VOXELS = 4  # anything smaller is reconstruction noise
 # Point spacing must stay this far inside the voxel size; the margin absorbs points that
 # straddle a cell boundary, which is where the gaps appear.
 SAFE_SPACING_RATIO = 0.9
+# Quantile of nearest-neighbour distance that counts as "the" spacing. Near-max, not
+# typical: see _nn_spacing.
+NN_QUANTILE = 99.9
 
 
 def _neighbours(key):
@@ -36,17 +39,25 @@ def _neighbours(key):
                     yield (x + dx, y + dy, z + dz)
 
 
-def _nn_spacing(points, sample: int = 200, chunk: int = 25, seed: int = 0) -> float:
-    """Distance from a typical point to its nearest neighbour, over the whole cloud.
+def _nn_spacing(points, sample: int = 1500, chunk: int = 25) -> float:
+    """The widest gap between neighbouring samples, over the whole cloud.
+
+    Near-maximum rather than typical, because the voxel fitted from this has to bridge
+    *every* gap within a surface: a p95 leaves one gap in twenty unbridged, and those
+    are exactly the seams a wall splits along. Measured at p95 a real room fitted a
+    0.049 voxel and came apart into 121 fragments; at p99.9 it fits 0.068 and segments
+    into the 4 objects actually in it, stable across a 2x range of voxel sizes.
 
     Sampled on the query side only — comparing against the full cloud is what makes
     this a real spacing estimate. Subsampling the reference side instead would measure
-    the subsample's density rather than the data's.
+    the subsample's density rather than the data's. The stride is fixed rather than
+    random: a 200-point random sample swung this number +-20% between identical scans,
+    which is enough to land the fitted voxel on either side of that fragmentation cliff.
     """
     if len(points) < 2:
         return 0.0
-    rng = np.random.default_rng(seed)
-    query = points[rng.choice(len(points), min(sample, len(points)), replace=False)]
+    # ponytail: O(sample x N). Fine to ~100k points; bucket into a grid above that.
+    query = points[::max(1, len(points) // sample)]
 
     nearest = []
     for start in range(0, len(query), chunk):
@@ -57,7 +68,7 @@ def _nn_spacing(points, sample: int = 200, chunk: int = 25, seed: int = 0) -> fl
 
     finite = np.concatenate(nearest)
     finite = finite[np.isfinite(finite)]
-    return float(np.percentile(finite, 95)) if len(finite) else 0.0
+    return float(np.percentile(finite, NN_QUANTILE)) if len(finite) else 0.0
 
 
 def _fit_voxel(points, voxel: float) -> float:

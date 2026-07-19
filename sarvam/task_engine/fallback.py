@@ -36,32 +36,50 @@ class FunctionGemmaPlanner(TaskPlanner):
         self.known = [str(o).lower() for o in (objects or [])] + list(LABEL_ONTOLOGY)
 
     def _target(self, clause: str, action: str) -> str:
-        for label in self.known:
-            if re.search(rf"\b{re.escape(label)}\b", clause):
-                return label
+        # Earliest mention wins, so "the box to the table" yields the box rather than
+        # whichever label the known-list happens to hold first. Ties break towards scene
+        # labels — this room's own objects are the better guess.
+        hits = [
+            (match.start(), rank, label)
+            for rank, label in enumerate(self.known)
+            if (match := re.search(rf"\b{re.escape(label)}\b", clause))
+        ]
+        if hits:
+            return min(hits)[2]
         if action == "wait":
             return ""
         # No known label — take the trailing noun, which is where English puts it.
         words = [w for w in re.findall(r"[a-z0-9_]+", clause) if w not in STOPWORDS]
         return words[-1] if words else ""
 
-    def _node(self, index: int, clause: str):
+    def _clause_steps(self, clause: str) -> list:
+        """One clause -> the (action, target) steps it implies."""
         for action, phrases in VERB_PATTERNS:
             for phrase in phrases:
-                if re.search(rf"\b{re.escape(phrase)}\b", clause):
-                    rest = clause.replace(phrase, " ", 1)
-                    return TaskNode(f"n{index}", action, self._target(rest, action))
-        return None
+                if not re.search(rf"\b{re.escape(phrase)}\b", clause):
+                    continue
+                rest = clause.replace(phrase, " ", 1)
+                # "take X to Y" is ditransitive: it names the thing and where it goes.
+                # Expanding it here is what makes it executable — the robot has to reach
+                # X before it can lift it, and reach Y before it can put it down.
+                if action == "pickup" and \
+                        len(split := re.split(r"\bto\b", rest, maxsplit=1)) == 2 and \
+                        split[1].strip():
+                    item = self._target(split[0], action)
+                    dest = self._target(split[1], action)
+                    return [("navigate_to", item), ("pickup", item),
+                            ("navigate_to", dest), ("place", dest)]
+                return [(action, self._target(rest, action))]
+        return []
 
     def plan(self, text: str, lang: str = "en") -> TaskGraph:
-        nodes: list = []
+        steps: list = []
         for clause in SPLIT.split((text or "").lower()):
             clause = clause.strip()
-            if not clause:
-                continue
-            node = self._node(len(nodes), clause)
-            if node:
-                nodes.append(node)
+            if clause:
+                steps.extend(self._clause_steps(clause))
+        nodes = [TaskNode(f"n{i}", action, target)
+                 for i, (action, target) in enumerate(steps)]
         edges = [(a.id, b.id) for a, b in zip(nodes, nodes[1:])]
         return TaskGraph(nodes=nodes, edges=edges)
 

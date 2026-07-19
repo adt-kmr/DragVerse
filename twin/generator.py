@@ -27,6 +27,12 @@ UNITY_FROM_WORLD = [
 # Structure, not furniture: these never block the ground plane the robot drives on.
 WALKABLE_LABELS = {"floor", "ceiling"}
 
+# Height band a ground robot actually sweeps. Points below FLOOR_CLEARANCE are the floor
+# itself (and scan noise on it); points above ROBOT_HEIGHT pass over the robot's head, so
+# a ceiling or a high shelf must not block the ground plane.
+FLOOR_CLEARANCE = 0.08
+ROBOT_HEIGHT = 1.0
+
 
 def load_rules(path: str = RULES_PATH) -> dict:
     """mapping.yaml -> {label: {'prefab', 'collider'}}."""
@@ -57,8 +63,16 @@ def _scene_object(obj: dict, rules: dict) -> dict:
     }
 
 
-def _navmesh(objects: list, cell: float) -> dict:
-    """2D occupancy grid over the floor, with every non-walkable footprint blocked."""
+def _navmesh(objects: list, cell: float, points=None) -> dict:
+    """2D occupancy grid over the floor.
+
+    Occupancy comes from the point cloud when it is available, and only from bounding
+    boxes when it is not. A bounding box is a solid block, so anything concave — a room
+    shell, a ring of walls, a U-shaped desk — fills its whole interior when rasterized
+    that way, and a room that segments as one connected shell comes out entirely
+    blocked. Points carry the concavity that a bbox throws away, so the walls block and
+    the floor between them stays open.
+    """
     floors = [o for o in objects if o["label"] in WALKABLE_LABELS]
     extent = floors or objects
     if not extent:
@@ -72,10 +86,7 @@ def _navmesh(objects: list, cell: float) -> dict:
     height = max(1, round((ymax - ymin) / cell))
     grid = [[0] * width for _ in range(height)]
 
-    for obj in objects:
-        if obj["label"] in WALKABLE_LABELS:
-            continue
-        ox0, oy0, _, ox1, oy1, _ = obj["bbox3d"]
+    def block(ox0, oy0, ox1, oy1):
         # Any cell the footprint touches is blocked — round outwards, since a robot
         # clipping the corner of a table is a real collision.
         for row in range(max(0, int((oy0 - ymin) / cell)),
@@ -83,6 +94,21 @@ def _navmesh(objects: list, cell: float) -> dict:
             for col in range(max(0, int((ox0 - xmin) / cell)),
                              min(width, int((ox1 - xmin) / cell) + 1)):
                 grid[row][col] = 1
+
+    if points is not None and len(points) > 0:
+        floor_z = min(o["bbox3d"][2] for o in extent)
+        for x, y, z in points:
+            if not (floor_z + FLOOR_CLEARANCE <= z <= floor_z + ROBOT_HEIGHT):
+                continue
+            col, row = int((x - xmin) / cell), int((y - ymin) / cell)
+            if 0 <= col < width and 0 <= row < height:
+                grid[row][col] = 1
+    else:
+        for obj in objects:
+            if obj["label"] in WALKABLE_LABELS:
+                continue
+            ox0, oy0, _, ox1, oy1, _ = obj["bbox3d"]
+            block(ox0, oy0, ox1, oy1)
 
     return {"origin": [xmin, ymin], "cell": cell,
             "width": width, "height": height, "grid": grid}
@@ -116,8 +142,12 @@ def nearest_free(navmesh: dict, x: float, y: float):
     return best
 
 
-def generate_twin(objects: list, out_dir: str, cell: float = 0.1) -> dict:
-    """Write scene.json + navmesh.json for the Unity batch-mode generator."""
+def generate_twin(objects: list, out_dir: str, cell: float = 0.1, points=None) -> dict:
+    """Write scene.json + navmesh.json for the Unity batch-mode generator.
+
+    `points` is the reconstructed cloud; pass it whenever it is on hand, so the navmesh
+    is built from measured geometry rather than from bounding boxes.
+    """
     os.makedirs(out_dir, exist_ok=True)
     rules = load_rules()
 
@@ -131,7 +161,7 @@ def generate_twin(objects: list, out_dir: str, cell: float = 0.1) -> dict:
 
     navmesh_path = os.path.join(out_dir, "navmesh.json")
     with open(navmesh_path, "w") as f:
-        json.dump(_navmesh(objects, cell), f)
+        json.dump(_navmesh(objects, cell, points), f)
 
     return {"scene_path": scene_path, "navmesh_path": navmesh_path,
             "object_count": len(objects)}
