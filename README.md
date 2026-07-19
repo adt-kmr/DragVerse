@@ -8,6 +8,10 @@
 An Edge-Native AI Platform for Automatic Digital Twin Generation, Reinforcement Learning, and Real-World Robot Deployment.
 </p>
 
+<p align="center">
+  <a href="https://canva.link/fnuff4ozu4cst50"><b>View Presentation</b></a>
+</p>
+
 ---
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
