@@ -102,6 +102,7 @@ def _export_via_ai_hub(policy: LinearPolicy, out_dir: str, device_label: str) ->
         options="--quantize_full_type int8",
     )
     target_model = compile_job.get_target_model()
+    assert target_model is not None, "Compilation failed to produce a model"
 
     os.makedirs(out_dir, exist_ok=True)
     artifact_path = os.path.join(out_dir, "policy.tflite")
