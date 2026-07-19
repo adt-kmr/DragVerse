@@ -1286,3 +1286,72 @@ svg.plan {
     gap: 0.15rem;
   }
 }
+
+/* ================================================================== the wizard */
+
+.wizard {
+  font-family: var(--mono);
+  padding: 3rem 0 4rem;
+  max-width: 46rem;
+}
+
+.wizard__title {
+  margin-bottom: 1.5rem;
+}
+
+.wizard__steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: var(--ui-sm);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.wizard__steps li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.wizard__marker {
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: var(--hair) solid var(--line);
+  border-radius: 50%;
+}
+
+.wizard__steps .is-here {
+  color: var(--text);
+}
+
+.wizard__steps .is-here .wizard__marker {
+  border-color: var(--near-ink);
+  color: var(--near-ink);
+}
+
+.wizard__steps .is-done .wizard__marker {
+  border-color: var(--mint-ink);
+  color: var(--mint-ink);
+}
+
+.wizard__body {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: var(--hair) solid var(--line);
+}
+
+.wizard__step h2 {
+  margin: 0 0 0.75rem;
+  font-family: var(--display);
+  font-variation-settings: "wdth" 76, "wght" 640;
+  font-size: var(--ui-base);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}

@@ -3,15 +3,19 @@ import React from "react";
 import Console from "./Console.jsx";
 import Landing from "./Landing.jsx";
 import { Link, usePath } from "./router.jsx";
+import Wizard from "./wizard/Wizard.jsx";
 
 /**
- * The sheet both routes are printed on: `/` is the overview, `/dashboard` is the console.
- * Masthead, registration marks, and the footer stamp are shared, which is what keeps the
- * two routes reading as one document rather than two sites.
+ * The sheet all three routes are printed on: `/` is the overview, `/wizard` is the guided
+ * setup, `/dashboard` is the operator console. Masthead, registration marks, and the
+ * footer stamp are shared, which is what keeps the routes reading as one document rather
+ * than three sites.
  */
 export default function App() {
   const path = usePath();
-  const onConsole = path.startsWith("/dashboard");
+  const onWizard = path.startsWith("/wizard");
+  const onConsole = !onWizard && path.startsWith("/dashboard");
+  const sheet = onWizard ? "02" : onConsole ? "03" : "01";
 
   return (
     <div className="sheet">
@@ -26,8 +30,11 @@ export default function App() {
         </Link>
 
         <nav className="masthead__nav">
-          <Link className={onConsole ? "" : "is-here"} to="/">
+          <Link className={!onWizard && !onConsole ? "is-here" : ""} to="/">
             Overview
+          </Link>
+          <Link className={onWizard ? "is-here" : ""} to="/wizard">
+            Wizard
           </Link>
           <Link className={onConsole ? "is-here" : ""} to="/dashboard">
             Console
@@ -37,7 +44,7 @@ export default function App() {
         <dl className="masthead__meta">
           <div>
             <dt>Sheet</dt>
-            <dd>{onConsole ? "02 / 02" : "01 / 02"}</dd>
+            <dd>{sheet} / 03</dd>
           </div>
           <div>
             <dt>Rev</dt>
@@ -50,7 +57,7 @@ export default function App() {
         </dl>
       </header>
 
-      <main>{onConsole ? <Console /> : <Landing />}</main>
+      <main>{onWizard ? <Wizard /> : onConsole ? <Console /> : <Landing />}</main>
 
       <footer className="stamp">
         <span>TwinForge</span>
