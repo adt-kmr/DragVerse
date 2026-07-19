@@ -90,13 +90,23 @@ class _OnnxPolicy:
     def __init__(self, session):
         self._session = session
         self._input_name = session.get_inputs()[0].name
-        # ML-Agents' exported continuous-action output is conventionally named
-        # "continuous_actions"; fall back to the first output for models that don't
-        # follow that convention (e.g. a hand-built test fixture).
+        # Output selection priority: real ML-Agents ONNX exports commonly carry more than
+        # one output whose name contains "action" (e.g. "continuous_actions" alongside a
+        # "continuous_action_output_shape" descriptor tensor of int64 shape values, not
+        # action values). Substring search + first-in-iteration-order can silently pick the
+        # wrong one and feed nonsense into _cap(...) downstream. So: try the exact,
+        # documented ML-Agents output names first ("continuous_actions", then
+        # "discrete_actions"), and only fall back to substring search -- for exporter
+        # variations that don't use those exact names -- if neither is present.
         output_names = [o.name for o in session.get_outputs()]
-        self._output_name = next(
-            (n for n in output_names if "action" in n.lower()), output_names[0]
-        )
+        for exact in ("continuous_actions", "discrete_actions"):
+            if exact in output_names:
+                self._output_name = exact
+                break
+        else:
+            self._output_name = next(
+                (n for n in output_names if "action" in n.lower()), output_names[0]
+            )
 
     def act(self, obs):
         obs_batch = np.asarray(obs, dtype=np.float32).reshape(1, -1)
@@ -116,6 +126,18 @@ def onnx_success_rate(onnx_path: str, navmesh: dict, goal, episodes: int = 20) -
     same spirit as `train_ppo`'s degrade shape -- `success_rate`/`episodes` unusable,
     `passed: False`, and a `reason` explaining why, rather than letting an ImportError
     propagate to the caller.
+
+    Known gap (not resolved by this function -- see below): `policy/rl/config.py` designs
+    the PPO observation vector as 4 absolute-coordinate elements
+    (`[pos_x, pos_y, goal_x, goal_y]`), but `policy.evaluate.rollout` (reused here, and also
+    used by the already-shipped BC `/train` path) passes a 2-element DELTA vector
+    (`target - pos`) to `policy.act(...)` -- the pre-existing `LinearPolicy` convention,
+    `obs_dim=2`. A real ML-Agents-trained ONNX model built to Task 10's 4-dim design will
+    reject that 2-dim input with a shape-mismatch error from ONNX Runtime. Reconciling the
+    two observation spaces is future work (it isn't safe to do by changing
+    `policy/evaluate.py`'s shape here, since that would risk breaking the shipped,
+    already-tested BC path); this function's job for now is to fail safely on that
+    mismatch, not silently produce a wrong number.
     """
     try:
         import onnxruntime
@@ -127,7 +149,19 @@ def onnx_success_rate(onnx_path: str, navmesh: dict, goal, episodes: int = 20) -
             "reason": "onnxruntime not installed",
         }
 
-    session = onnxruntime.InferenceSession(onnx_path)
-    policy = _OnnxPolicy(session)
-    result = evaluate(policy, navmesh, goal, episodes=episodes)
+    try:
+        session = onnxruntime.InferenceSession(onnx_path)
+        policy = _OnnxPolicy(session)
+        result = evaluate(policy, navmesh, goal, episodes=episodes)
+    except Exception as exc:  # noqa: BLE001 -- broad on purpose, see module/function docs:
+        # ONNX Runtime/numpy shape-mismatch failures (e.g. the 4-dim PPO vs. 2-dim BC-delta
+        # observation gap documented above) surface as different exception types across
+        # onnxruntime versions; the contract here is "never crash the caller", not "handle
+        # one specific exception type".
+        return {
+            "success_rate": None,
+            "episodes": 0,
+            "passed": False,
+            "reason": f"onnx evaluation failed: {exc}",
+        }
     return {**result, "reason": None}

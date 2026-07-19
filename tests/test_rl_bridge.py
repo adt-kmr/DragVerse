@@ -112,3 +112,89 @@ def test_onnx_success_rate_runs_a_real_model_when_onnxruntime_is_present(tmp_pat
     assert result["episodes"] == 20
     assert 0.0 <= result["success_rate"] <= 1.0
     assert isinstance(result["passed"], bool)
+
+
+def test_onnx_success_rate_degrades_gracefully_on_observation_shape_mismatch(tmp_path):
+    # Reproduces the real gap between policy/rl/config.py's 4-dim PPO observation design
+    # ([pos_x, pos_y, goal_x, goal_y]) and policy.evaluate.rollout's reused 2-dim BC delta
+    # convention (target - pos): a model that genuinely expects 4 inputs, fed the 2-dim
+    # rollout vector, must degrade gracefully rather than crash the caller.
+    pytest.importorskip("onnxruntime")
+    onnx = pytest.importorskip("onnx")
+    from onnx import TensorProto, helper
+
+    W = np.eye(4, dtype=np.float32).flatten().tolist()
+    b = np.zeros(4, dtype=np.float32).tolist()
+    graph = helper.make_graph(
+        [
+            helper.make_node("MatMul", ["obs_0", "W"], ["mm_out"]),
+            helper.make_node("Add", ["mm_out", "b"], ["continuous_actions"]),
+        ],
+        "four_dim_ppo_policy",
+        [helper.make_tensor_value_info("obs_0", TensorProto.FLOAT, [1, 4])],
+        [helper.make_tensor_value_info("continuous_actions", TensorProto.FLOAT, [1, 4])],
+        initializer=[
+            helper.make_tensor("W", TensorProto.FLOAT, [4, 4], W),
+            helper.make_tensor("b", TensorProto.FLOAT, [4], b),
+        ],
+    )
+    model = helper.make_model(graph, producer_name="test")
+    model.opset_import[0].version = 13
+    onnx_path = tmp_path / "four_dim_policy.onnx"
+    onnx.save(model, str(onnx_path))
+
+    result = onnx_success_rate(str(onnx_path), NAVMESH, GOAL, episodes=20)
+
+    assert result["passed"] is False
+    assert result["success_rate"] is None
+    assert result["episodes"] == 0
+    assert "reason" in result and result["reason"]
+
+
+def test_onnx_policy_prefers_exact_output_name_match():
+    # Real ML-Agents exports can carry multiple outputs whose name contains "action" --
+    # e.g. "continuous_actions" alongside a "continuous_action_output_shape" descriptor
+    # tensor (int64 shape values, not action values). _OnnxPolicy must pick the exact,
+    # documented output name rather than the first substring match in iteration order.
+    pytest.importorskip("onnxruntime")
+    pytest.importorskip("onnx")
+    from onnx import TensorProto, helper
+
+    from policy.rl.bridge import _OnnxPolicy
+
+    # continuous_action_output_shape (a substring match, listed FIRST) is a decoy int64
+    # shape tensor; continuous_actions (the exact match, listed SECOND) is the real output.
+    W = (np.eye(2, dtype=np.float32) * 0.3).flatten().tolist()
+    b = np.zeros(2, dtype=np.float32).tolist()
+    graph = helper.make_graph(
+        [
+            helper.make_node(
+                "Constant", [], ["continuous_action_output_shape"],
+                value=helper.make_tensor(
+                    "shape_val", TensorProto.INT64, [2], [1, 2]
+                ),
+            ),
+            helper.make_node("MatMul", ["obs_0", "W"], ["mm_out"]),
+            helper.make_node("Add", ["mm_out", "b"], ["continuous_actions"]),
+        ],
+        "multi_output_policy",
+        [helper.make_tensor_value_info("obs_0", TensorProto.FLOAT, [1, 2])],
+        [
+            helper.make_tensor_value_info(
+                "continuous_action_output_shape", TensorProto.INT64, [2]
+            ),
+            helper.make_tensor_value_info("continuous_actions", TensorProto.FLOAT, [1, 2]),
+        ],
+        initializer=[
+            helper.make_tensor("W", TensorProto.FLOAT, [2, 2], W),
+            helper.make_tensor("b", TensorProto.FLOAT, [2], b),
+        ],
+    )
+    model = helper.make_model(graph, producer_name="test")
+    model.opset_import[0].version = 13
+
+    import onnxruntime
+    session = onnxruntime.InferenceSession(model.SerializeToString())
+    policy = _OnnxPolicy(session)
+
+    assert policy._output_name == "continuous_actions"
