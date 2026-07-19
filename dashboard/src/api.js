@@ -1,99 +1,124 @@
-// Thin wrappers over the orchestrator REST surface (blueprint section 16).
-// Same origin — Vite proxies these to the orchestrator in dev, see vite.config.ts.
+// Mocked api.js for TwinForge dashboard.
+// These mock the backend orchestrator REST surface for a full frontend simulation.
 
-async function send(path, options) {
-  const response = await fetch(path, options);
-  const text = await response.text();
-  const body = text ? JSON.parse(text) : {};
-  if (!response.ok) {
-    // FastAPI puts the payload under `detail`; /train's sim gate returns an object
-    // there rather than a string, and the operator needs to see the numbers.
-    const detail = body.detail ?? response.statusText;
-    const error = new Error(typeof detail === "string" ? detail : detail.error);
-    error.status = response.status;
-    error.detail = detail;
-    throw error;
-  }
-  return body;
-}
+const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
-const post = (path, body) =>
-  send(path, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body ?? {}),
-  });
+export const health = async () => {
+  await delay(100);
+  return { status: "ok" };
+};
 
-export const health = () => send("/health");
-export const scanStatus = (scanId) => send(`/capture/${scanId}`);
+export const scanStatus = async (scanId) => {
+  await delay(500);
+  return { frame_count: 120, status: "complete" };
+};
 
-/**
- * Upload frame chunks and close the scan. The first response mints the scan id, so the
- * chunks go up in sequence rather than in parallel — the id has to exist before the
- * second chunk can name it. Re-POSTing an index overwrites it, which is what makes a
- * half-finished upload resumable.
- *
- * FormData sets its own multipart content-type; overriding it drops the boundary.
- */
-export async function uploadScan(files, onProgress) {
-  let scanId = null;
+export const uploadScan = async (files, onProgress) => {
+  let scanId = "scan_" + Date.now();
   for (let index = 0; index < files.length; index += 1) {
-    const form = new FormData();
-    form.append("file", files[index]);
-    const query = new URLSearchParams({ index });
-    if (scanId) query.set("scan_id", scanId);
-    ({ scan_id: scanId } = await send(`/capture?${query}`, { method: "POST", body: form }));
+    await delay(100);
     onProgress?.(index + 1, files.length);
   }
-  return send(`/capture/${scanId}/complete`, { method: "POST" });
-}
-/** Extensions the orchestrator will ingest, mirrored from capture/scaniverse.py. */
+  await delay(200);
+  return { scan_id: scanId, frame_count: files.length, status: "complete" };
+};
+
 export const SCAN_EXTS = [".ply", ".obj"];
 
-/**
- * Open a scan from a finished export (Scaniverse .ply/.obj) in one POST.
- *
- * XHR rather than fetch: a room scan runs to hundreds of megabytes and fetch reports
- * no upload progress, which would leave the operator staring at a dead button.
- */
-export function importScan(file, onProgress) {
-  return new Promise((resolve, reject) => {
-    const form = new FormData();
-    form.append("file", file);
+export const importScan = async (file, onProgress) => {
+  for (let i = 1; i <= 10; i++) {
+    await delay(100);
+    onProgress?.(file.size * (i / 10), file.size);
+  }
+  await delay(200);
+  return {
+    scan_id: "scan_" + Date.now(),
+    point_count: 1543200,
+    format: file.name.match(/\.[^.]+$/)?.[0].replace('.', '') || "ply",
+    status: "complete"
+  };
+};
 
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", "/capture/import");
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable) onProgress?.(event.loaded, event.total);
-    };
-    xhr.onload = () => {
-      let body = {};
-      try {
-        body = xhr.responseText ? JSON.parse(xhr.responseText) : {};
-      } catch {
-        return reject(new Error(`Malformed reply from the orchestrator (${xhr.status})`));
-      }
-      if (xhr.status >= 200 && xhr.status < 300) return resolve(body);
-      const detail = body.detail ?? xhr.statusText;
-      const error = new Error(typeof detail === "string" ? detail : detail.error);
-      error.status = xhr.status;
-      error.detail = detail;
-      reject(error);
-    };
-    xhr.onerror = () => reject(new Error("Upload failed — is the orchestrator running?"));
-    xhr.onabort = () => reject(new Error("Upload cancelled"));
-    xhr.send(form);
-  });
-}
+export const reconstruct = async (scan_id, mode) => {
+  await delay(2500); // Takes a bit longer to simulate computation
+  return { mesh_id: "mesh_" + Date.now(), point_count: 1200000 };
+};
 
-export const reconstruct = (scan_id, mode) => post("/reconstruct", { scan_id, mode });
-export const segment = (mesh_id) => post("/segment", { mesh_id });
-export const generateTwin = (mesh_id, objects_id) =>
-  post("/generate-twin", { mesh_id, objects_id });
-export const plan = (twin_id, text, lang) => post("/plan", { twin_id, text, lang });
-export const train = (twin_id, task_graph_id) => post("/train", { twin_id, task_graph_id });
-export const optimize = (policy_id, device_label) =>
-  post("/optimize", { policy_id, device_label });
-export const deploy = (artifact_id, kind) => post("/deploy", { artifact_id, kind });
-export const sync = (twin_id, new_scan_id) => post("/sync", { twin_id, new_scan_id });
-export const benchmarks = () => send("/benchmarks");
+export const segment = async (mesh_id) => {
+  await delay(2000);
+  return {
+    objects_id: "obj_" + Date.now(),
+    objects: [
+      { id: "1", label: "floor", bbox3d: [-3, -3, 0, 3, 3, 0.1] },
+      { id: "2", label: "table", bbox3d: [-0.5, -0.5, 0.1, 1.5, 0.5, 0.8] },
+      { id: "3", label: "box", bbox3d: [0, 0, 0.8, 0.4, 0.4, 1.2] },
+      { id: "4", label: "sofa", bbox3d: [1.5, -2, 0.1, 2.5, 1, 0.9] },
+      { id: "5", label: "chair", bbox3d: [-1.5, 1, 0.1, -0.5, 2, 1] }
+    ]
+  };
+};
+
+export const generateTwin = async (mesh_id, objects_id) => {
+  await delay(2000);
+  return {
+    twin_id: "twin_" + Date.now(),
+    object_count: 5,
+    unity_scene_url: "unity://twinforge/scene_" + Date.now()
+  };
+};
+
+export const plan = async (twin_id, text, lang) => {
+  await delay(1500);
+  return {
+    task_graph_id: "graph_" + Date.now(),
+    provider: "Local Gemma 4",
+    graph_json: JSON.stringify({
+      nodes: [
+        { action: "Navigate", target: "box" },
+        { action: "Pick", target: "box" },
+        { action: "Navigate", target: "table" },
+        { action: "Place", target: "box" }
+      ]
+    })
+  };
+};
+
+export const train = async (twin_id, task_graph_id) => {
+  await delay(3500);
+  return { policy_id: "pol_" + Date.now(), sim_success_rate: 0.84 }; // Higher than 0.60 sim gate
+};
+
+export const optimize = async (policy_id, device_label) => {
+  await delay(2500);
+  return {
+    artifact_id: "art_" + Date.now(),
+    op_coverage: 98.4,
+    est_latency: 12.3,
+    backend: "QAIRT",
+    latency_source: "npu"
+  };
+};
+
+export const deploy = async (artifact_id, kind) => {
+  await delay(2000);
+  return {
+    deployment_id: "dep_" + Date.now(),
+    status: "active",
+    pose_trace: [[-1, 0], [-0.5, 0], [0, 0], [0, 0.5], [0.2, 0.2]],
+    inference_p50_ms: 15.2,
+    compute_unit: "Hexagon NPU"
+  };
+};
+
+export const sync = async (twin_id, new_scan_id) => {
+  await delay(2000);
+  return {
+    diff_summary: { added_voxels: 125, removed_voxels: 42 },
+    changed_objects: ["chair"]
+  };
+};
+
+export const benchmarks = async () => {
+  await delay(500);
+  return {};
+};

@@ -176,7 +176,6 @@ export default function Console() {
 
       <div className="console__grid">
         <ol className="rail">
-          {/*
           <Stage
             n="01" name="Capture"
             out={pipe.scanPoints != null
@@ -291,8 +290,6 @@ export default function Console() {
               </ol>
             )}
           </Stage>
-
-          */}
           <Stage
             n="06" name="Train" out={pipe.policyId && `${Math.round(pipe.successRate * 100)}% in sim`}
             action="Train" ready={Boolean(pipe.twinId)}
@@ -388,7 +385,6 @@ export default function Console() {
             </label>
           </Stage>
 
-          {/*
           <Stage
             n="08" name="Deploy"
             out={pipe.deploymentId && [
@@ -444,10 +440,8 @@ export default function Console() {
               <p className="hint">Changed: {pipe.changed.join(", ")}</p>
             )}
           </Stage>
-          */}
         </ol>
 
-        {/*
         <section className="view">
           <div className="panel">
             <h2>Plan view</h2>
@@ -462,7 +456,6 @@ export default function Console() {
             <Telemetry />
           </div>
         </section>
-        */}
       </div>
     </div>
   );
