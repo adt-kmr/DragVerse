@@ -1,6 +1,6 @@
 <div align="center">
 
-# TwinForge
+# DragVerse
 ### Build Once. Deploy Anywhere. Train Robots Inside Their Own Digital Twin.
 
 <p align="center">
@@ -25,11 +25,11 @@ An Edge-Native AI Platform for Automatic Digital Twin Generation, Reinforcement 
 
 ---
 
-# 🚀 What is TwinForge?
+# 🚀 What is DragVerse?
 
-TwinForge is an **Edge AI platform** that automatically creates a **digital twin of a real-world environment**, trains an autonomous robot inside that virtual replica using **Reinforcement Learning**, optimizes the trained policy for Qualcomm Edge AI hardware, and deploys it directly onto a physical robot—without manually building simulation environments.
+DragVerse is an **Edge AI platform** that automatically creates a **digital twin of a real-world environment**, trains an autonomous robot inside that virtual replica using **Reinforcement Learning**, optimizes the trained policy for Qualcomm Edge AI hardware, and deploys it directly onto a physical robot—without manually building simulation environments.
 
-Instead of spending days creating simulation scenes, navigation maps, reward environments, coordinate systems, and robot policies, TwinForge generates them automatically from a simple mobile scan.
+Instead of spending days creating simulation scenes, navigation maps, reward environments, coordinate systems, and robot policies, DragVerse generates them automatically from a simple mobile scan.
 
 The result is a complete end-to-end pipeline:
 
@@ -68,7 +68,7 @@ The entire workflow is orchestrated through a simple guided web application whil
 # 📖 Table of Contents
 
 - Overview
-- Why TwinForge?
+- Why DragVerse?
 - Key Features
 - System Architecture
 - Complete Pipeline
@@ -89,7 +89,7 @@ The entire workflow is orchestrated through a simple guided web application whil
 
 ---
 
-# 🌍 Why TwinForge?
+# 🌍 Why DragVerse?
 
 Training robots in the physical world is expensive, slow, and potentially unsafe.
 
@@ -105,9 +105,9 @@ Traditional robotics development usually requires:
 
 This process often takes days or even weeks before meaningful robot learning can begin.
 
-TwinForge reduces this workflow into a guided pipeline.
+DragVerse reduces this workflow into a guided pipeline.
 
-Using only a smartphone, TwinForge can:
+Using only a smartphone, DragVerse can:
 
 ✅ Capture a real environment
 
@@ -129,9 +129,9 @@ The physical environment itself becomes the simulation.
 
 # 🎯 Project Vision
 
-TwinForge aims to become an operating system for rapid robot learning.
+DragVerse aims to become an operating system for rapid robot learning.
 
-Rather than creating robots for one specific environment, TwinForge creates environments that can immediately train robots.
+Rather than creating robots for one specific environment, DragVerse creates environments that can immediately train robots.
 
 Our long-term vision is:
 
@@ -163,7 +163,7 @@ Just scan, train, and deploy.
 
 ## 🤖 Reinforcement Learning Automation
 
-TwinForge automatically prepares:
+DragVerse automatically prepares:
 
 - observation space
 - action space
@@ -177,7 +177,7 @@ using Unity ML-Agents PPO.
 
 ## 🧠 Edge AI First
 
-Unlike cloud-only robotics systems, TwinForge prioritizes on-device intelligence.
+Unlike cloud-only robotics systems, DragVerse prioritizes on-device intelligence.
 
 Supported execution includes:
 
@@ -195,7 +195,7 @@ The majority of inference occurs directly on edge hardware.
 
 ## 🌐 Guided Web Application
 
-TwinForge intentionally hides robotics complexity.
+DragVerse intentionally hides robotics complexity.
 
 Instead of interacting with SDKs or command-line interfaces, users simply complete a six-step guided workflow.
 
@@ -219,7 +219,7 @@ No robotics expertise is required.
 
 ## 🎙 Multilingual Voice Commands
 
-TwinForge supports natural language robot control.
+DragVerse supports natural language robot control.
 
 Online mode:
 
@@ -296,7 +296,7 @@ onto Qualcomm-powered edge hardware.
 
 # 🧩 Complete End-to-End Pipeline
 
-TwinForge consists of six major stages.
+DragVerse consists of six major stages.
 
 ## Stage 1 — Environment Capture
 
@@ -336,7 +336,7 @@ Users specify:
 - objective
 - language instruction
 
-TwinForge converts these selections into reinforcement learning configurations.
+DragVerse converts these selections into reinforcement learning configurations.
 
 ---
 
@@ -374,7 +374,7 @@ The digital twin and the physical robot remain spatially synchronized through Ar
 
 ---
 
-# 💡 What Makes TwinForge Different?
+# 💡 What Makes DragVerse Different?
 
 Most robotics platforms solve only one piece of the pipeline.
 
@@ -386,7 +386,7 @@ Most robotics platforms solve only one piece of the pipeline.
 | RL Frameworks | Require custom environments |
 | Edge Deployment Tools | Require trained models |
 
-TwinForge unifies every stage into one automated workflow.
+DragVerse unifies every stage into one automated workflow.
 
 It is simultaneously:
 
@@ -402,7 +402,7 @@ within a single application.
 
 # 🔬 Research Contributions
 
-TwinForge combines several research areas into one integrated workflow:
+DragVerse combines several research areas into one integrated workflow:
 
 - Digital Twin Generation
 - Edge Artificial Intelligence
@@ -415,13 +415,13 @@ TwinForge combines several research areas into one integrated workflow:
 - On-device AI Inference
 - Autonomous Navigation
 
-While each individual domain has existing tools, TwinForge focuses on automating the complete lifecycle—from environment capture to real-world deployment.
+While each individual domain has existing tools, DragVerse focuses on automating the complete lifecycle—from environment capture to real-world deployment.
 
 ---
 
 # ⚡ Design Principles
 
-TwinForge is designed around five engineering principles.
+DragVerse is designed around five engineering principles.
 
 ### Edge First
 
@@ -464,7 +464,7 @@ Every stage—from environment capture to deployment—can be reproduced using d
 The repository is organized to keep every subsystem modular, independently testable, and easy to extend.
 
 ```text
-TwinForge/
+DragVerse/
 │
 ├── README.md
 ├── LICENSE
@@ -542,7 +542,7 @@ TwinForge/
 
 # 🏗 Software Architecture
 
-TwinForge follows a modular layered architecture.
+DragVerse follows a modular layered architecture.
 
 ```
 Presentation Layer
@@ -597,7 +597,7 @@ Execution Layer
 
 # ⚙ Compute Distribution
 
-One of TwinForge's major goals is to maximize edge execution.
+One of DragVerse's major goals is to maximize edge execution.
 
 | Component | CPU | GPU | NPU |
 |------------|-----|-----|-----|
@@ -696,9 +696,9 @@ One of TwinForge's major goals is to maximize edge execution.
 # 📥 Clone Repository
 
 ```bash
-git clone https://github.com/<your-org>/TwinForge.git
+git clone https://github.com/<your-org>/DragVerse.git
 
-cd TwinForge
+cd DragVerse
 ```
 
 ---
@@ -708,9 +708,9 @@ cd TwinForge
 Using Conda
 
 ```bash
-conda create -n twinforge python=3.11
+conda create -n DragVerse python=3.11
 
-conda activate twinforge
+conda activate DragVerse
 ```
 
 or
@@ -831,7 +831,7 @@ qai-hub devices
 
 ---
 
-# ▶ Running TwinForge
+# ▶ Running DragVerse
 
 ## Start Backend
 
@@ -879,7 +879,7 @@ python deployment/check_connection.py
 
 # 🌐 Web Application Workflow
 
-TwinForge is operated entirely through the guided web interface.
+DragVerse is operated entirely through the guided web interface.
 
 ## Step 1
 
@@ -1089,7 +1089,7 @@ Including
 
 # 🔍 Monitoring
 
-TwinForge continuously monitors
+DragVerse continuously monitors
 
 - Robot Status
 
@@ -1116,7 +1116,7 @@ through the web dashboard.
 
 # 🧪 Testing
 
-TwinForge includes multiple levels of testing to ensure reproducibility, deployment reliability, and real-world robustness.
+DragVerse includes multiple levels of testing to ensure reproducibility, deployment reliability, and real-world robustness.
 
 | Test Suite | Description |
 |------------|-------------|
@@ -1192,7 +1192,7 @@ Typical metrics monitored include:
 
 # 🔒 Safety Features
 
-TwinForge is designed with deployment safety in mind.
+DragVerse is designed with deployment safety in mind.
 
 ## Robot Safety
 
@@ -1246,7 +1246,7 @@ Logs assist with debugging, benchmarking, and deployment verification.
 
 # 🛰 Telemetry
 
-During deployment TwinForge streams:
+During deployment DragVerse streams:
 
 - Robot status
 - Motor state
@@ -1342,7 +1342,7 @@ returns available devices.
 
 # ❓ Frequently Asked Questions
 
-## Does TwinForge require cloud connectivity?
+## Does DragVerse require cloud connectivity?
 
 No.
 
@@ -1364,7 +1364,7 @@ The robot abstraction layer allows new robot adapters to be implemented with min
 
 Yes.
 
-TwinForge is designed to be modular.
+DragVerse is designed to be modular.
 
 Although PPO is the reference implementation, alternative algorithms can be integrated.
 
@@ -1380,7 +1380,7 @@ Alternative simulators can be integrated.
 
 ---
 
-## Does TwinForge require Qualcomm hardware?
+## Does DragVerse require Qualcomm hardware?
 
 No.
 
@@ -1514,7 +1514,7 @@ team@email.com
 
 # 🌍 Open Source Philosophy
 
-TwinForge is built on the belief that advanced robotics research should be reproducible, transparent, and accessible.
+DragVerse is built on the belief that advanced robotics research should be reproducible, transparent, and accessible.
 
 Accordingly:
 
@@ -1552,14 +1552,14 @@ Please refer to the official documentation of each project for licensing and att
 
 # 📚 Citation
 
-If TwinForge contributes to your research, please cite it.
+If DragVerse contributes to your research, please cite it.
 
 ```bibtex
-@software{twinforge2026,
-  title={TwinForge: Automatic Digital Twin Generation and Edge Reinforcement Learning Platform},
+@software{DragVerse2026,
+  title={DragVerse: Automatic Digital Twin Generation and Edge Reinforcement Learning Platform},
   author={Your Team},
   year={2026},
-  url={https://github.com/your-org/TwinForge}
+  url={https://github.com/your-org/DragVerse}
 }
 ```
 
@@ -1575,7 +1575,7 @@ See the accompanying **LICENSE** file for details.
 
 # 🙏 Acknowledgements
 
-We gratefully acknowledge the technologies, communities, and open-source ecosystems that made TwinForge possible.
+We gratefully acknowledge the technologies, communities, and open-source ecosystems that made DragVerse possible.
 
 Special thanks to:
 
@@ -1594,7 +1594,7 @@ Special thanks to:
 
 # ⭐ Support the Project
 
-If you find TwinForge useful:
+If you find DragVerse useful:
 
 ⭐ Star this repository
 
@@ -1612,13 +1612,13 @@ Every contribution—large or small—helps improve the project.
 
 <div align="center">
 
-# TwinForge
+# DragVerse
 
 ### Scan • Generate • Train • Optimize • Deploy
 
 **Building the future of autonomous robotics through Digital Twins and Edge AI.**
 
-Made with ❤️ by the TwinForge Team.
+Made with ❤️ by the DragVerse Team.
 
 </div>
 
@@ -1627,10 +1627,10 @@ End-to-end digital twin pipeline: capture → reconstruct → semantic label →
 ## Structure
 
 ```
-TwinForge/
+DragVerse/
 ├── README.md
 ├── docs/                    # Architecture ADRs, OpenAPI specs, references
-├── sdk/twinforge/           # pip-installable client: capture(), reconstruct(), train(), deploy()
+├── sdk/DragVerse/           # pip-installable client: capture(), reconstruct(), train(), deploy()
 ├── orchestrator/            # Pipeline state machine, job queue, REST gateway
 ├── capture/
 │   ├── android/             # OnePlus 15 companion app (ARCore session, chunked upload)
@@ -1644,7 +1644,7 @@ TwinForge/
 │   └── rules/               # label → prefab/collider mapping (YAML)
 ├── robot/
 │   ├── ros2_ws/             # ROS2 packages: nav, adapters
-│   ├── adapters/            # TwinForgeRobot: SimRobot, UnoQRobot
+│   ├── adapters/            # DragVerseRobot: SimRobot, UnoQRobot
 │   └── unoq_bridge/         # sketch/ + python/ per Arduino App Lab structure
 ├── policy/
 │   ├── baselines/           # Pretrained checkpoints
