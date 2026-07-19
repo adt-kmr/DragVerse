@@ -9,7 +9,8 @@ An Edge-Native AI Platform for Automatic Digital Twin Generation, Reinforcement 
 </p>
 
 <p align="center">
-  <a href="https://canva.link/fnuff4ozu4cst50"><b>View Presentation</b></a>
+  <a href="https://canva.link/fnuff4ozu4cst50"><b>View Presentation</b></a> • 
+  <a href="https://drive.google.com/drive/u/0/folders/15F4HBpPMoVNuzUQUgl_WtR4VTcybVTBP"><b>Demo Videos</b></a>
 </p>
 
 ---
