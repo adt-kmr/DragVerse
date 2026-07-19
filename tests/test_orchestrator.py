@@ -159,6 +159,47 @@ def test_generate_twin_with_aruco_marker_stores_anchor_transform(client, tmp_pat
     assert len(transform) == 4 and all(len(row) == 4 for row in transform)
 
 
+def test_generate_twin_with_aruco_but_no_cv2_degrades_gracefully(client, tmp_path):
+    """cv2 is genuinely not installed in this venv, so detect_marker raises a real
+    RuntimeError here -- no mocking needed. The endpoint must still return 200 with
+    anchor_transform_json left None, exactly like the no-aruco-path case."""
+    with pytest.raises(ModuleNotFoundError):
+        import cv2  # noqa: F401
+
+    scan_id = upload_scan(client)
+    mesh = client.post("/reconstruct", json={"scan_id": scan_id}).json()
+    client.post("/segment", json={"mesh_id": mesh["mesh_id"]})
+
+    response = client.post("/generate-twin", json={
+        "mesh_id": mesh["mesh_id"], "aruco_image_path": str(tmp_path / "marker.png")})
+    assert response.status_code == 200, response.text
+    twin_id = response.json()["twin_id"]
+
+    conn = db.connect()
+    stored = db.get(conn, "twins", twin_id)
+    assert stored["anchor_transform_json"] is None
+
+
+def test_generate_twin_bad_aruco_path_is_a_400(client, monkeypatch):
+    """A caller-supplied path detect_marker can't read is a real request error, not
+    a missing-dependency degrade -- surfaced as 400 rather than swallowed."""
+    from orchestrator import service
+
+    def _raise_not_found(*args, **kwargs):
+        raise FileNotFoundError("Could not read image: nope.png")
+
+    monkeypatch.setattr(service, "detect_marker", _raise_not_found)
+
+    scan_id = upload_scan(client)
+    mesh = client.post("/reconstruct", json={"scan_id": scan_id}).json()
+    client.post("/segment", json={"mesh_id": mesh["mesh_id"]})
+
+    response = client.post("/generate-twin", json={
+        "mesh_id": mesh["mesh_id"], "aruco_image_path": "nope.png"})
+    assert response.status_code == 400
+    assert "nope.png" in response.json()["detail"]
+
+
 def test_generate_twin_requires_segmentation_first(client):
     scan_id = upload_scan(client)
     mesh = client.post("/reconstruct", json={"scan_id": scan_id}).json()

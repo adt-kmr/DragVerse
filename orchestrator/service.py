@@ -166,7 +166,9 @@ def generate_twin_endpoint(body: dict = Body(...)):
         except RuntimeError:
             # cv2 (the optional 'vision' extra) isn't installed -- degrade gracefully
             # rather than failing twin generation over a missing anchor, matching the
-            # "every stage runs without optional heavy deps" convention.
+            # "every stage runs without optional heavy deps" convention. Note this is
+            # the opposite of /reconstruct's RuntimeError -> 400 handling above: that's
+            # a real backend failure, this is an optional feature quietly unavailable.
             marker = None
         except FileNotFoundError as exc:
             # The caller explicitly asked for anchoring and gave a bad path -- that's
