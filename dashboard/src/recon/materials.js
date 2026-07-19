@@ -58,6 +58,17 @@ export function createSignalMaterials() {
     // path (recon.js clones it again, thinner, for each object's wireframe reveal), so
     // "the executed route" reads visually heavier than "structural wireframe".
     indigoLine: new LineMaterial({ color: SIGNAL.indigo, transparent: true, linewidth: 2, side: THREE.DoubleSide }),
+    // The direct line the planner considered and rejected — dashed and muted so it never
+    // competes with the solid indigo route it gets replaced by.
+    ghostLine: new LineMaterial({
+      color: 0x4a524d,
+      transparent: true,
+      linewidth: 1.5,
+      dashed: true,
+      dashSize: 0.07,
+      gapSize: 0.05,
+      side: THREE.DoubleSide,
+    }),
   };
   for (const mat of Object.values(m)) mat.toneMapped = false;
   return m;

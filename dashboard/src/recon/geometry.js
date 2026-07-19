@@ -15,8 +15,11 @@ import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeome
 const BEVEL = 0.012; // metres — small, consistent corner radius, not a design choice per object
 const SEG = 3; // bevel smoothness — kept low, this is product-viz scale, not hero-prop scale
 
+// RoundedBoxGeometry's native axes are (width, height, depth) with height along local Y —
+// but every caller passes args in this scene's own convention (x/y/z = width/depth/height,
+// see recon.js), so h and d swap here once, for every call site, instead of at each one.
 function roundedBox(w, h, d) {
-  return new RoundedBoxGeometry(Math.max(w, 0.01), Math.max(h, 0.01), Math.max(d, 0.01), SEG, BEVEL);
+  return new RoundedBoxGeometry(Math.max(w, 0.01), Math.max(d, 0.01), Math.max(h, 0.01), SEG, BEVEL);
 }
 
 /** A solid mesh tagged with the PBR values it should crossfade *to* during phase 3 —
@@ -83,7 +86,11 @@ function buildTable(prop, mats, edgeMaterial) {
     }
   }
   parts.push({ geometry: roundedBox(prop.w, 0.05, prop.d), material: mats.oak, x: prop.w / 2, y: prop.d / 2, z: prop.h - 0.025 });
-  return assemble(prop, parts, edgeMaterial);
+  const g = assemble(prop, parts, edgeMaterial);
+  // Legs are cylinders — their length defaults to local Y, so they need rotating onto Z
+  // (this scene's height axis) to stand up instead of lying along depth.
+  for (let i = 0; i < 4; i++) g.solids[i].rotation.x = Math.PI / 2;
+  return g;
 }
 
 function buildChair(prop, mats, edgeMaterial) {
@@ -100,7 +107,10 @@ function buildChair(prop, mats, edgeMaterial) {
   }
   parts.push({ geometry: roundedBox(prop.w - 0.04, 0.04, prop.d - 0.04), material: mats.fabric, x: prop.w / 2, y: prop.d / 2, z: seatH + 0.02 });
   parts.push({ geometry: roundedBox(prop.w - 0.06, prop.h - seatH, 0.03), material: mats.paintedWood, x: prop.w / 2, y: prop.d - 0.03, z: seatH + (prop.h - seatH) / 2 });
-  return assemble(prop, parts, edgeMaterial);
+  const g = assemble(prop, parts, edgeMaterial);
+  // Legs are cylinders — see the note in buildTable.
+  for (let i = 0; i < 4; i++) g.solids[i].rotation.x = Math.PI / 2;
+  return g;
 }
 
 function buildShelf(prop, mats, edgeMaterial) {
@@ -153,20 +163,22 @@ function buildRobot(prop, mats, edgeMaterial, signalOrange) {
     parts.push({ geometry: new THREE.CylinderGeometry(wheelR, wheelR, 0.05, 14), material: mats.rubber, x: wx, y: prop.d * 0.86, z: wheelZ });
   }
   const g = assemble(prop, parts, edgeMaterial);
+  g.solids[1].rotation.x = Math.PI / 2; // mast is a cylinder — see the note in buildTable.
   for (let i = 2; i < g.solids.length; i++) g.solids[i].rotation.z = Math.PI / 2;
 
   // Beacon, floating well above the tallest furniture in the room (cabinet: 1.45m, shelf:
-  // 1.9m) — unlit signal orange, not part of `solids` so it never gets pulled into the
-  // clay->PBR crossfade. A real 3D room means real occlusion: the robot's actual body,
-  // at floor height, regularly ends up entirely hidden behind the table/chairs/cabinet
-  // from this isometric angle exactly as solid geometry should behave — confirmed by
-  // testing a fixed marker at table height, which was mostly hidden behind the table too.
-  // A beacon riding well above everything else is the standard fix real AMR fleets use
-  // for exactly this problem, and it stays perfectly in sync with the body since it's a
-  // child of the same group — it's always readable as "here's the robot," regardless of
-  // what's in front of the body itself.
+  // 1.9m — the tallest, so 4x the robot's own 0.55m height is what actually clears it) —
+  // unlit signal orange, not part of `solids` so it never gets pulled into the clay->PBR
+  // crossfade. A real 3D room means real occlusion: the robot's actual body, at floor
+  // height, regularly ends up entirely hidden behind the table/chairs/cabinet/shelf from
+  // this isometric angle exactly as solid geometry should behave — confirmed by testing a
+  // fixed marker at table height, which was mostly hidden behind the table too. A beacon
+  // riding well above everything else is the standard fix real AMR fleets use for exactly
+  // this problem, and it stays perfectly in sync with the body since it's a child of the
+  // same group — it's always readable as "here's the robot," regardless of what's in
+  // front of the body itself.
   const light = new THREE.Mesh(new THREE.SphereGeometry(prop.w * 0.16, 12, 10), signalOrange);
-  light.position.set(prop.w / 2, prop.d / 2, prop.h * 3);
+  light.position.set(prop.w / 2, prop.d / 2, prop.h * 4);
   light.frustumCulled = false;
   g.group.add(light);
   g.light = light;
