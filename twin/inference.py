@@ -7,6 +7,7 @@ import onnxruntime as ort
 import onnxruntime_qnn as qnn_ep
 import numpy as np
 import time
+import serial
 
 MODEL_PATH = "Buggy.onnx"  # update to your actual model path
 
@@ -14,6 +15,14 @@ MODEL_PATH = "Buggy.onnx"  # update to your actual model path
 ep_lib_path = qnn_ep.get_library_path()
 ep_registration_name = "QNNExecutionProvider"
 ort.register_execution_provider_library(ep_registration_name, ep_lib_path)
+
+import serial
+
+arduino = serial.Serial("/dev/ttyUSB0", 115200, timeout=0.1)  # adjust port
+time.sleep(2) 
+
+def send_to_arduino(steer, throttle):
+    arduino.write(f"{steer:.4f},{throttle:.4f}\n".encode())
 
 # --- 2. Find QNN EP devices ---
 all_ep_devices = ort.get_ep_devices()
@@ -124,7 +133,7 @@ if __name__ == "__main__":
         steer, throttle = run_inference(obs)
         prev_steer, prev_throttle = steer, throttle
 
-        # TODO: send (steer, throttle) to your actual motor controller here
+        send_to_arduino(steer, throttle)  # send the output to Arduino
 
     elapsed = time.time() - start
     print(f"\n{num_test_iterations} inferences in {elapsed:.3f}s")
