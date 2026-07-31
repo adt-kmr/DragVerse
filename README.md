@@ -197,6 +197,10 @@ flowchart LR
 
 Designed to be approachable, even if you are new to robotics.
 
+<img width="1193" height="673" alt="image" src="https://github.com/user-attachments/assets/4c56d151-ff91-4822-b26c-8b125cda71d0" />
+<img width="1049" height="608" alt="image" src="https://github.com/user-attachments/assets/2c7e8a77-b92b-47a9-940b-e2ff9593a348" />
+
+
 ---
 
 ## Multilingual Voice Commands
@@ -348,6 +352,9 @@ This enables efficient edge inference.
 The optimized policy is transferred onto the robot where it performs inference locally using Qualcomm hardware acceleration.
 
 The digital twin and the physical robot remain spatially synchronized through ArUco-based coordinate alignment.
+
+<img width="1158" height="684" alt="image" src="https://github.com/user-attachments/assets/2309ea0f-80c8-4ae8-82d9-bfa84bcd54d3" />
+
 
 ---
 
