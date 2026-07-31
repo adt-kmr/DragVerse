@@ -28,6 +28,10 @@ An Edge-Native AI Platform for Automatic Digital Twin Generation, Reinforcement 
 
 </div>
 
+https://github.com/user-attachments/assets/25042198-c6a0-49a1-9c68-b741852fa50a
+
+
+
 ---
 
 # What is DragVerse?
