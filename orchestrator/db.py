@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS twins(
 CREATE TABLE IF NOT EXISTS task_graphs(
     id TEXT PRIMARY KEY, twin_id TEXT NOT NULL REFERENCES twins(id),
     source_text TEXT, lang TEXT,
-    provider TEXT CHECK (provider IN ('sarvam','function_gemma')),
+    provider TEXT CHECK (provider IN ('sarvam','function_gemma','keyword')),
     graph_json TEXT,
     created_at TEXT DEFAULT (datetime('now')));
 CREATE TABLE IF NOT EXISTS demonstrations(
@@ -80,6 +80,13 @@ def connect(path: str | None = None) -> sqlite3.Connection:
 
 
 def init_db(conn: sqlite3.Connection) -> None:
+    # CREATE TABLE IF NOT EXISTS never alters an existing table, so a database made before
+    # 'keyword' was a valid provider would reject every /plan insert. Refuse it up front.
+    row = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'task_graphs'"
+    ).fetchone()
+    if row and "'keyword'" not in row[0]:
+        raise RuntimeError(f"database schema changed: delete {DB_PATH} and restart")
     conn.executescript(SCHEMA)
     conn.commit()
 

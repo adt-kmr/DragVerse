@@ -1,6 +1,6 @@
 """Offline task planner — deterministic keyword grammar, no model weights.
 
-This is the fallback that runs when SARVAM_API_KEY is unset. It is not a language model:
+This is the planner that runs when SARVAM_API_KEY is unset. It is not a language model:
 it is a small, predictable grammar over the fixed action vocabulary, which is the right
 trade for a demo that must never fail to plan.
 """
@@ -27,11 +27,12 @@ STOPWORDS = {"the", "a", "an", "to", "at", "on", "in", "of", "up", "down", "over
              "there", "it", "please", "go", "near", "towards", "toward"}
 
 
-class FunctionGemmaPlanner(TaskPlanner):
+class KeywordPlanner(TaskPlanner):
     """Keyword grammar over the fixed vocabulary, aware of the scene's object labels."""
 
-    def __init__(self, objects=None, model_path: str = "models/function_gemma"):
-        self.model_path = model_path
+    provider = "keyword"
+
+    def __init__(self, objects=None):
         # Scene labels beat ontology labels: "widget" in this room is a real target.
         self.known = [str(o).lower() for o in (objects or [])] + list(LABEL_ONTOLOGY)
 
@@ -83,12 +84,3 @@ class FunctionGemmaPlanner(TaskPlanner):
         edges = [(a.id, b.id) for a, b in zip(nodes, nodes[1:])]
         return TaskGraph(nodes=nodes, edges=edges)
 
-
-class FunctionGemma:
-    """Deprecated shim so older callers keep working; use FunctionGemmaPlanner."""
-
-    def __init__(self, model_path: str = "models/function_gemma"):
-        self.model_path = model_path
-
-    def generate(self, prompt: str) -> str:
-        return FunctionGemmaPlanner().plan(prompt).to_json()
