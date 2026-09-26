@@ -1,4 +1,6 @@
 import json
+import sys
+from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
@@ -62,3 +64,24 @@ def test_qairt_conversion_produces_the_same_bundle_shape(policy_path):
     assert MANIFEST_FIELDS <= set(manifest)
     assert manifest["format"] == "qairt"
     assert manifest["backend"] in ("qairt", "local")
+
+
+def test_ai_hub_export_reports_only_what_was_measured(policy_path, tmp_path, monkeypatch):
+    """No layer detail -> no coverage figure, and an unquantized compile is float."""
+    hub = MagicMock()
+    hub.submit_profile_job.return_value.download_profile.return_value = {
+        "execution_summary": {"estimated_inference_time": 250},
+        "execution_detail": [],
+    }
+    monkeypatch.setitem(sys.modules, "qai_hub", hub)
+    monkeypatch.setitem(sys.modules, "torch", MagicMock())
+    monkeypatch.setenv("AI_HUB_API_TOKEN", "test-token")
+
+    manifest = export_model(policy_path, out_dir=str(tmp_path / "artifact"))
+
+    assert manifest["backend"] == "ai-hub"
+    assert manifest["op_coverage"] is None
+    assert manifest["precision"] == "float"
+    assert manifest["est_latency_ms"] == 0.25
+    assert manifest["latency_source"] == "ai-hub-device-cloud"
+    assert "quantize" not in str(hub.submit_compile_job.call_args)
