@@ -3,7 +3,7 @@
 Runs on the Snapdragon X Elite AI PC through ONNX Runtime's QNN execution provider and
 streams (steer, throttle) to a plain Arduino running buggy_motor_controller.ino.
 
-    pip install -r requirements.txt -r requirements-npu.txt
+    pip install -r requirements-aipc.txt
     python twin/inference.py --port COM5
     python twin/inference.py --no-serial --iterations 1000 --profile --log run.json
 
@@ -135,7 +135,7 @@ def available_ports() -> list:
     try:
         from serial.tools import list_ports
     except ImportError:
-        return ["(pyserial not installed: pip install -r requirements-npu.txt)"]
+        return ["(pyserial not installed: pip install -r requirements-aipc.txt)"]
     return [f"{p.device}  {p.description}" for p in list_ports.comports()] or ["(none found)"]
 
 
@@ -215,7 +215,8 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def build_record(args, samples: list, providers, split, ort_version: str) -> dict:
+def build_record(args, samples: list, providers, split, ort_version: str,
+                 qnn_version: str | None = None) -> dict:
     # No "model" key: benchmarks/summary.json collects AI Hub records by that key.
     return {
         "model_file": args.model.name,
@@ -226,6 +227,7 @@ def build_record(args, samples: list, providers, split, ort_version: str) -> dic
         "execution_providers": list(providers),
         "perf_mode": args.perf_mode,
         "onnxruntime_version": ort_version,
+        "onnxruntime_qnn_version": qnn_version,
         "serial_port": None if args.no_serial else args.port,
         "rate_hz": None if args.no_serial else args.rate_hz,
         # ONNX Runtime profiling adds per-node timing overhead to every sample.
@@ -262,7 +264,10 @@ def main(argv=None) -> int:
     if args.profile:
         with open(session.end_profiling()) as f:
             split = node_split(json.load(f))
-    record = build_record(args, samples, session.get_providers(), split, ort.__version__)
+    import onnxruntime_qnn
+
+    record = build_record(args, samples, session.get_providers(), split, ort.__version__,
+                          getattr(onnxruntime_qnn, "__version__", None))
 
     stats = record["latency_ms"]
     print(f"\n{len(samples)} inferences: p50 {stats['p50']} ms, p95 {stats['p95']} ms, "

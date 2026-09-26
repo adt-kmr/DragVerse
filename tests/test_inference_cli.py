@@ -190,7 +190,8 @@ def test_run_record_carries_what_ran(tmp_path):
     model.write_bytes(b"abc")
     args = inference.parse_args(["--no-serial", "--model", str(model), "--iterations", "3"])
     record = inference.build_record(
-        args, [1.0, 2.0, 3.0], ["QNNExecutionProvider", "CPUExecutionProvider"], None, "1.23.0")
+        args, [1.0, 2.0, 3.0], ["QNNExecutionProvider", "CPUExecutionProvider"], None, "1.23.0",
+        qnn_version="2.6.0")
 
     assert record["model_file"] == "m.onnx"
     assert "model" not in record   # benchmarks/summary.json collects only AI Hub records
@@ -200,6 +201,8 @@ def test_run_record_carries_what_ran(tmp_path):
     assert record["iterations"] == 3
     assert record["latency_ms"]["p50"] == 2.0
     assert record["execution_providers"] == ["QNNExecutionProvider", "CPUExecutionProvider"]
+    assert record["onnxruntime_version"] == "1.23.0"
+    assert record["onnxruntime_qnn_version"] == "2.6.0"
     assert record["profiled"] is False   # profiling inflates latency; the record says so
     assert record["rate_hz"] is None     # unpaced: no motor controller attached
     json.dumps(record)

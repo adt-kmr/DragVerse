@@ -279,7 +279,7 @@ Note for anyone running the orchestrator locally: delete `data/dragverse.db` onc
 
 ## Task 2: Import-safe, runnable Path A script
 
-`twin/inference.py` opens `/dev/ttyUSB0` and registers the QNN EP at import time, and `onnxruntime-qnn` only ships Windows wheels, so it cannot run as committed. Restructure it into testable functions plus `main()`.
+`twin/inference.py` opens `/dev/ttyUSB0` and registers the QNN EP at import time, and needs the Windows ARM64 `onnxruntime-qnn` plugin, so it cannot run as committed off the AI PC. Restructure it into testable functions plus `main()`.
 
 **Files:**
 - Rewrite: `twin/inference.py`
@@ -738,8 +738,9 @@ if __name__ == "__main__":
 Append to `requirements-npu.txt`:
 
 ```
-# Path A (twin/inference.py) on the Snapdragon X Elite AI PC. onnxruntime-qnn ships
-# Windows ARM64 wheels only; use a native ARM64 Python.
+# Path A (twin/inference.py) on the Snapdragon X Elite AI PC; use a native ARM64 Python.
+# (Superseded: these lines moved to requirements-aipc.txt, since torch in this file has
+# no Windows ARM64 wheel.)
 onnxruntime-qnn; sys_platform == "win32" and platform_machine == "ARM64"
 pyserial>=3.5; sys_platform == "win32" and platform_machine == "ARM64"
 ```

@@ -64,10 +64,10 @@ each action to an Arduino running `twin/buggy_motor_controller.ino` over serial
 (`<steer>,<throttle>\n` at 115200 baud). The Arduino drives the steering servo and the
 ESC, and returns both to neutral if no command arrives for 500 ms.
 
-On the Snapdragon X Elite AI PC (Windows on ARM, native ARM64 Python):
+On the Snapdragon X Elite AI PC (Windows on ARM, native ARM64 Python 3.12):
 
 ```powershell
-pip install -r requirements.txt -r requirements-npu.txt
+pip install -r requirements-aipc.txt
 python twin/inference.py --port COM5
 python twin/inference.py --no-serial --iterations 1000 --log benchmarks/path_a_local.json
 python twin/inference.py --no-serial --iterations 200 --profile --log benchmarks/path_a_profile.json

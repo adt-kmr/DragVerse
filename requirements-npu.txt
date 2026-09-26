@@ -10,8 +10,3 @@
 qai-hub>=0.52.0          # compile + profile jobs against real devices
 torch>=2.6.0             # tracing models before submission (_export_via_ai_hub needs it)
 onnx>=1.16.0             # model interchange format accepted by AI Hub
-
-# Path A (twin/inference.py) on the Snapdragon X Elite AI PC. onnxruntime-qnn ships
-# Windows ARM64 wheels only; use a native ARM64 Python.
-onnxruntime-qnn; sys_platform == "win32" and platform_machine == "ARM64"
-pyserial>=3.5; sys_platform == "win32" and platform_machine == "ARM64"

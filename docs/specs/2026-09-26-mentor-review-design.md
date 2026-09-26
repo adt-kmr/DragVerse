@@ -94,7 +94,7 @@ Run record fields: `model_file`, `model_sha256`, `iterations`, `latency_ms.{p50,
 
 `build_observation` keeps its 14-value order unchanged; its docstring names `BuggyAgent.cs` as the source of that order.
 
-Dependencies: `onnxruntime-qnn` and `pyserial` added to `requirements-npu.txt` with a `sys_platform == "win32" and platform_machine == "ARM64"` marker.
+Dependencies: `requirements-aipc.txt` (numpy, `onnxruntime>=1.24.2`, `onnxruntime-qnn>=2.0,<3`, `pyserial`), installed alone on the AI PC with native ARM64 Python 3.12. `requirements-npu.txt` cannot be installed there: `torch` has no Windows ARM64 wheel on PyPI. `onnxruntime-qnn` 2.x is the plugin package (`onnxruntime_qnn.get_library_path`, `get_qnn_htp_path`); 1.x is a full ONNX Runtime build installed as `onnxruntime`. The run record also carries `onnxruntime_qnn_version`.
 
 ### 5.2 `deployment/aihub_export/profile_models.py`
 
