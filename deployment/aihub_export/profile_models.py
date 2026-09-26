@@ -457,7 +457,7 @@ def write_results(records: list, out_dir: str = BENCHMARK_DIR) -> str:
     for path in sorted(glob.glob(os.path.join(out_dir, "*.json"))):
         if os.path.basename(path) == "summary.json":
             continue
-        with open(path) as f:
+        with open(path, encoding="utf-8-sig") as f:   # tolerate a Windows BOM
             doc = json.load(f)
         if isinstance(doc, dict) and "model" in doc and "npu" in doc:
             models.append(doc)

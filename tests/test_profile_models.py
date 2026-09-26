@@ -224,3 +224,11 @@ def test_rerun_replaces_that_models_record(tmp_path):
                                out_dir=str(tmp_path))
     with open(summary) as f:
         assert [m["npu"]["latency_ms"] for m in json.load(f)["models"]] == [1.0]
+
+
+def test_write_results_reads_files_saved_with_a_bom(tmp_path):
+    # Windows PowerShell 5.1 writes UTF-8 with a byte-order mark; json.load rejects it.
+    (tmp_path / "session.json").write_bytes(b"\xef\xbb\xbf" + json.dumps({"soc": "x"}).encode())
+    summary = pm.write_results([{"model": "a", "npu": {}}], out_dir=str(tmp_path))
+    with open(summary) as f:
+        assert [m["model"] for m in json.load(f)["models"]] == ["a"]
