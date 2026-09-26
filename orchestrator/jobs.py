@@ -4,7 +4,7 @@ Every REST call that does work gets a job row so the dashboard can poll it.
 """
 import uuid
 
-# ponytail: in-memory registry, single process. Move to a DB table + pub/sub when the
+# NOTE: in-memory registry, single process. Move to a DB table + pub/sub when the
 # orchestrator runs more than one worker.
 _JOBS: dict = {}
 _LISTENERS: list = []

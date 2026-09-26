@@ -74,7 +74,7 @@ Directory names ARE the architecture:
 - `robot/adapters/` — `DragVerseRobot` ABC (`base.py`) with `SimRobot` and `UnoQRobot`
   implementations; this is the seam for swapping simulated vs. physical robot backends.
 - `sarvam/task_engine/` — `TaskProvider` ABC for NL→task-graph planning; `fallback.py`'s
-  `FunctionGemma` is the on-device fallback used when `SARVAM_API_KEY` is unset (online
+  `KeywordPlanner` is the offline planner used when `SARVAM_API_KEY` is unset (online
   Sarvam provider not yet implemented).
 - `policy/finetune/` — behaviour-cloning fine-tune scripts; `policy/baselines/` holds
   pretrained checkpoints (gitignored, pulled separately).
@@ -94,4 +94,4 @@ shared DB wired up yet.
 
 Copy `.env.example` to `.env`. Both are optional for install/test; needed only for live runs
 against real models: `AI_HUB_API_TOKEN` (Qualcomm AI Hub export/quantization),
-`SARVAM_API_KEY` (online task planning; falls back to on-device FunctionGemma if unset).
+`SARVAM_API_KEY` (online task planning; falls back to the offline keyword planner if unset).

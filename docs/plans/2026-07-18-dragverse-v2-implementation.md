@@ -1,6 +1,5 @@
 # DragVerse v2 Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Turn the DragVerse scaffold into a working end-to-end pipeline (capture → reconstruct → segment → twin → plan → train → optimize → deploy) matching blueprint v2 (`detailed implementation doc.md`), runnable and testable offline on this machine.
 
@@ -73,7 +72,7 @@ Tests: quantize→dequantize max abs error < 0.05 for unit-scale weights; artifa
 
 ### Task 10: Orchestrator — `orchestrator/service.py`, `orchestrator/pipeline.py`, `orchestrator/jobs.py`
 `pipeline.py`: extend `PipelineState` with `PLAN, TRAIN, OPTIMIZE` (keep existing five values/order semantics: CAPTURE → RECONSTRUCT → SEMANTIC → TWIN_GENERATE → PLAN → TRAIN → OPTIMIZE → DEPLOY); `Pipeline.transition` validates forward order, raises on skip-backward.
-`jobs.py`: `create_job(conn-free, stage) -> job_id`, `finish_job(job_id, ok, detail)`, `get_job(job_id)` — in-memory dict + mirror row in `telemetry`? No — simple in-memory registry (`# ponytail: in-memory jobs, move to DB rows when multi-process`). Synchronous execution; every §16 POST creates a job, runs the stage, finishes it, returns ids.
+`jobs.py`: `create_job(conn-free, stage) -> job_id`, `finish_job(job_id, ok, detail)`, `get_job(job_id)` — in-memory dict + mirror row in `telemetry`? No — simple in-memory registry (`# NOTE: in-memory jobs, move to DB rows when multi-process`). Synchronous execution; every §16 POST creates a job, runs the stage, finishes it, returns ids.
 `service.py`: FastAPI app wiring §16 exactly:
 - `POST /capture` (multipart chunk + meta) and `GET /capture/{scan_id}` delegate to capture store; inserts `scans` row.
 - `POST /reconstruct {scan_id, mode}` → Task 3 → `meshes` row → `{mesh_id, glb_url}` (ply path when no glb).

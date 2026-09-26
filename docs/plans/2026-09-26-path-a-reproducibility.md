@@ -1,6 +1,5 @@
 # PR 1 — Path A Reproducibility Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make Path A (`twin/Buggy.onnx` on the Hexagon NPU) runnable from the repository as committed, make AI Hub profiling report float precision and merge results honestly, label the keyword planner as what it is, and cut the README and repository down to what exists.
 
@@ -1529,7 +1528,7 @@ git commit -m "docs: rewrite README to describe only what the repository contain
 **Files:**
 - Untrack (keep locally): `CLAUDE.md`, `.impeccable/`, `dashboard/.impeccable/`, `DESIGN.md`, `PRODUCT.md`, `dashboard/DESIGN.md`, `dashboard/PRODUCT.md`, `Aether-Semantic-Context-Engine-DESIGN.md`
 - Delete: `dashboard/src/modify_console.js` (one-off script with an absolute local path; nothing imports it)
-- Move: `docs/superpowers/plans/*.md` → `docs/plans/`, `docs/superpowers/specs/*.md` → `docs/specs/`
+- Move: `docs/plans/*.md` → `docs/plans/`, `docs/specs/*.md` → `docs/specs/`
 - Modify: every `docs/plans/*.md` (drop the tool-specific header line), `detailed implementation doc.md` (anchors), tracked files containing `ponytail:`, `.gitignore:182`
 - Modify: `CHANGELOG.md`
 
@@ -1562,10 +1561,10 @@ Expected: no untracked `??` lines for those files; both files still exist locall
 
 ```bash
 mkdir -p docs/plans
-git mv docs/superpowers/plans/*.md docs/plans/
-git mv docs/superpowers/specs/*.md docs/specs/
+git mv docs/plans/*.md docs/plans/
+git mv docs/specs/*.md docs/specs/
 sed -i.bak '/^> \*\*For agentic workers:\*\*/d' docs/plans/*.md && rm docs/plans/*.md.bak
-sed -i.bak 's#docs/superpowers/plans/#docs/plans/#g; s#docs/superpowers/specs/#docs/specs/#g' docs/plans/*.md docs/specs/*.md && rm docs/plans/*.md.bak docs/specs/*.md.bak
+sed -i.bak 's#docs/plans/#docs/plans/#g; s#docs/specs/#docs/specs/#g' docs/plans/*.md docs/specs/*.md && rm docs/plans/*.md.bak docs/specs/*.md.bak
 sed -i.bak 's/^# Local git worktrees (superpowers:using-git-worktrees)$/# Local git worktrees/' .gitignore && rm .gitignore.bak
 ```
 

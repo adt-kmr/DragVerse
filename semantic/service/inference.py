@@ -56,7 +56,7 @@ def _nn_spacing(points, sample: int = 1500, chunk: int = 25) -> float:
     """
     if len(points) < 2:
         return 0.0
-    # ponytail: O(sample x N). Fine to ~100k points; bucket into a grid above that.
+    # NOTE: O(sample x N). Fine to ~100k points; bucket into a grid above that.
     query = points[::max(1, len(points) // sample)]
 
     nearest = []
@@ -96,7 +96,7 @@ def _cluster_voxels(points, voxel):
     the fragments fell under MIN_CLUSTER_VOXELS). `voxel` is therefore the finest
     resolution asked for, not a promise the data can always honour.
     """
-    # ponytail: one global voxel for the whole cloud. If density ever varies a lot
+    # NOTE: one global voxel for the whole cloud. If density ever varies a lot
     # within one scan, this should become a per-region fit.
     voxel = _fit_voxel(points, voxel)
 
@@ -109,7 +109,7 @@ def _cluster_voxels(points, voxel):
     for start, start_idx in index_of.items():
         if start_idx in seen:
             continue
-        # ponytail: BFS over a voxel dict; swap for scipy.ndimage.label if clouds
+        # NOTE: BFS over a voxel dict; swap for scipy.ndimage.label if clouds
         # get big enough that this shows up in a profile.
         seen.add(start_idx)
         stack, voxel_ids = [start], [start_idx]

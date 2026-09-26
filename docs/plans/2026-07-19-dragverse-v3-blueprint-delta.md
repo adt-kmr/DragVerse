@@ -1,8 +1,7 @@
 # DragVerse v3 Blueprint Delta Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Bring the already-complete v2 pipeline (81/81 tests passing, every stage real per `docs/superpowers/plans/2026-07-18-dragverse-v2-implementation.md`) in line with `DragVerse_Implementation_Blueprint_v3.pdf`: Scaniverse-fed splat capture, ArUco coordinate alignment, on-policy RL training via Unity ML-Agents, and a 6-step guided web wizard that replaces the SDK as the product's front door.
+**Goal:** Bring the already-complete v2 pipeline (81/81 tests passing, every stage real per `docs/plans/2026-07-18-dragverse-v2-implementation.md`) in line with `DragVerse_Implementation_Blueprint_v3.pdf`: Scaniverse-fed splat capture, ArUco coordinate alignment, on-policy RL training via Unity ML-Agents, and a 6-step guided web wizard that replaces the SDK as the product's front door.
 
 **Architecture:** No change to the orchestrator-owns-SQLite-and-stage-modules design. Every new piece (ArUco detector, splat refiner, ML-Agents bridge) is added as one more lazy-imported optional backend behind an interface with an honest fallback — the same pattern `open3d`/`ultralytics`/`pyserial`/`qai_hub` already use. The wizard is new dashboard routes calling orchestrator endpoints that mostly already exist.
 

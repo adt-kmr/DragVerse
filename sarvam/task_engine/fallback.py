@@ -83,4 +83,3 @@ class KeywordPlanner(TaskPlanner):
                  for i, (action, target) in enumerate(steps)]
         edges = [(a.id, b.id) for a, b in zip(nodes, nodes[1:])]
         return TaskGraph(nodes=nodes, edges=edges)
-

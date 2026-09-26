@@ -554,7 +554,7 @@ export function createScene(canvas) {
     cloud.setUniforms({ sweep, jitterMix, labelMix, fade, sizePx });
 
     // Room shell fades in alongside segmentation, matching the old floor grid's timing.
-    // ponytail: a flat opacity ramp rather than the props' full wireframe->fill->material
+    // NOTE: a flat opacity ramp rather than the props' full wireframe->fill->material
     // sequence — the shell is the background the objects sit in, not a staged "object"
     // with its own tag; upgrade path is giving it the same per-object treatment as PROPS
     // if the room shell ever needs its own reveal beat.
@@ -578,7 +578,7 @@ export function createScene(canvas) {
 
     // Phase 3: points converge -> wireframe grows -> surface fills -> material resolves
     // -> lighting settles, staggered per object exactly as the original per-box reveal.
-    // ponytail: the wireframe reveal fades the edge set's opacity in as one unit, rather
+    // NOTE: the wireframe reveal fades the edge set's opacity in as one unit, rather
     // than growing edge-by-edge like the old 12-edge box did — with real furniture meshes
     // there can be 60+ edges per object, and matching that reveal exactly would need
     // consistent per-edge ordering across composite meshes for a subtle flourish nobody
