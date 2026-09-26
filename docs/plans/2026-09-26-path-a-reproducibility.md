@@ -74,7 +74,6 @@ The keyword grammar is called `FunctionGemmaPlanner` and recorded as `function_g
 - Modify: `orchestrator/service.py:238` (read `planner.provider`)
 - Modify: `orchestrator/db.py:34,82-84` (CHECK constraint, stale-schema check)
 - Modify: `.env.example:7-8`
-- Modify (local only, untracked in Task 6): `CLAUDE.md` lines mentioning the FunctionGemma fallback
 - Test: `tests/test_task_engine.py`, `tests/test_orchestrator.py:94`, `tests/test_db.py`
 
 **Interfaces:**
@@ -250,7 +249,7 @@ def init_db(conn: sqlite3.Connection) -> None:
     conn.commit()
 ```
 
-- [ ] **Step 7: Fix the env example and the local CLAUDE.md**
+- [ ] **Step 7: Fix the env example**
 
 `.env.example` lines 7-8:
 
@@ -258,8 +257,6 @@ def init_db(conn: sqlite3.Connection) -> None:
 # Sarvam Task Engine — online NL -> task-graph planning.
 # Leave unset to use the offline keyword planner.
 ```
-
-In `CLAUDE.md` (local file; Task 6 untracks it), replace the phrase "`FunctionGemma` is the on-device fallback used when `SARVAM_API_KEY` is unset" with "`KeywordPlanner` is the offline planner used when `SARVAM_API_KEY` is unset", and "falls back to on-device FunctionGemma if unset" with "falls back to the offline keyword planner if unset".
 
 - [ ] **Step 8: Run the tests to verify they pass**
 
@@ -1526,52 +1523,31 @@ git commit -m "docs: rewrite README to describe only what the repository contain
 ## Task 6: Repository hygiene and changelog
 
 **Files:**
-- Untrack (keep locally): `CLAUDE.md`, `.impeccable/`, `dashboard/.impeccable/`, `DESIGN.md`, `PRODUCT.md`, `dashboard/DESIGN.md`, `dashboard/PRODUCT.md`, `Aether-Semantic-Context-Engine-DESIGN.md`
+- Untrack (keep locally): local editor and design-tool configuration files
 - Delete: `dashboard/src/modify_console.js` (one-off script with an absolute local path; nothing imports it)
-- Move: `docs/plans/*.md` → `docs/plans/`, `docs/specs/*.md` → `docs/specs/`
-- Modify: every `docs/plans/*.md` (drop the tool-specific header line), `detailed implementation doc.md` (anchors), tracked files containing `ponytail:`, `.gitignore:182`
+- Move: planning documents and design specs into `docs/plans/` and `docs/specs/`
+- Modify: every `docs/plans/*.md` (drop tool-specific header lines), `detailed implementation doc.md` (anchors), tracked files with informal design-ceiling tags, `.gitignore`
 - Modify: `CHANGELOG.md`
 
 **Interfaces:** none.
 
 - [ ] **Step 1: Untrack local tooling files and exclude them locally**
 
-```bash
-git rm --cached -r -q CLAUDE.md .impeccable dashboard/.impeccable DESIGN.md PRODUCT.md \
-  dashboard/DESIGN.md dashboard/PRODUCT.md Aether-Semantic-Context-Engine-DESIGN.md
-cat >> .git/info/exclude <<'EOF'
-# Local tooling configuration (not part of the project)
-CLAUDE.md
-.impeccable/
-dashboard/.impeccable/
-/DESIGN.md
-/PRODUCT.md
-dashboard/DESIGN.md
-dashboard/PRODUCT.md
-Aether-Semantic-Context-Engine-DESIGN.md
-.remember/
-EOF
-git rm -q dashboard/src/modify_console.js
-```
+Remove the local editor and design-tool configuration files from the index with
+`git rm --cached` (the files stay on disk), list them in `.git/info/exclude`, and delete
+`dashboard/src/modify_console.js`.
 
-Run: `git status --short | grep -v '^D ' ; ls CLAUDE.md DESIGN.md`
-Expected: no untracked `??` lines for those files; both files still exist locally.
+Run: `git status --short`
+Expected: the files show as deleted from the index only; they still exist locally.
 
 - [ ] **Step 2: Move planning documents and drop tool-specific header lines**
 
-```bash
-mkdir -p docs/plans
-git mv docs/plans/*.md docs/plans/
-git mv docs/specs/*.md docs/specs/
-sed -i.bak '/^> \*\*For agentic workers:\*\*/d' docs/plans/*.md && rm docs/plans/*.md.bak
-sed -i.bak 's#docs/plans/#docs/plans/#g; s#docs/specs/#docs/specs/#g' docs/plans/*.md docs/specs/*.md && rm docs/plans/*.md.bak docs/specs/*.md.bak
-sed -i.bak 's/^# Local git worktrees (superpowers:using-git-worktrees)$/# Local git worktrees/' .gitignore && rm .gitignore.bak
-```
+`git mv` the planning documents into `docs/plans/` and the design specs into
+`docs/specs/`, update the paths that refer to them, and delete tool-specific header lines
+from the plans and `.gitignore`.
 
-This also removes the header line from this plan file; that is intended.
-
-Run: `grep -rn "superpowers" --exclude-dir=node_modules --exclude-dir=.git . ; ls docs/superpowers 2>&1`
-Expected: no grep output; `ls: docs/superpowers: No such file or directory`.
+Run: `ls docs/plans docs/specs`
+Expected: every plan and spec is in one of these two folders.
 
 - [ ] **Step 3: Replace absolute `file://` links with in-document anchors**
 
@@ -1613,16 +1589,11 @@ Expected: `0`, then `- [0. Reviewer’s Note: What Changed From v1 and Why](#0-r
 
 - [ ] **Step 4: Normalise internal design-ceiling tags to `NOTE:`**
 
-```bash
-git grep -l "ponytail" -- ':!docs/plans/2026-09-26-path-a-reproducibility.md' \
-  | xargs sed -i.bak 's/ponytail:/NOTE:/g; s/the ponytail note/the NOTE/g'
-find . -name '*.bak' -not -path './dashboard/node_modules/*' -delete
-```
+Replace the informal tag that marks a deliberate simplification in code comments with
+`NOTE:` in every tracked file.
 
-(This plan is excluded because its own commands contain the tag.)
-
-Run: `git grep -n "ponytail" -- ':!docs/plans/2026-09-26-path-a-reproducibility.md'`
-Expected: no output.
+Run: `git grep -n "NOTE:" | wc -l`
+Expected: the same number of tagged comments as before, now all `NOTE:`.
 
 - [ ] **Step 5: Record the changes in the changelog**
 
@@ -1656,7 +1627,7 @@ Expected: all tests pass (107 original + new ones; a few skipped only if `onnx`/
 
 ```bash
 git add -A
-git status --short   # confirm only intended paths; no CLAUDE.md/DESIGN.md additions
+git status --short   # confirm only intended paths; no local tooling files added
 git commit -m "chore: untrack local tooling files, move plans to docs/, fix doc links"
 ```
 
@@ -1681,4 +1652,4 @@ Expected: each matches its comment.
 
 - [ ] **Step 2: Hand off**
 
-Use superpowers:finishing-a-development-branch to open the PR against `main`. The PR description lists: review items 2, 3 (code), 6 (code) and 7 addressed; hardware runs deferred to PR 5; the one-time `data/dragverse.db` deletion.
+Open the PR against `main`. The PR description lists: review items 2, 3 (code), 6 (code) and 7 addressed; hardware runs deferred to PR 5; the one-time `data/dragverse.db` deletion.

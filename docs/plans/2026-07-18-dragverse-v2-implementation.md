@@ -13,7 +13,7 @@
 - SDK keeps the eight verbs (§19): `capture, reconstruct, segment, generate_twin, plan, train, optimize, deploy` + `run_pipeline`.
 - DB schema is §17.2 verbatim (SQLite; `*_id` FKs, `created_at` everywhere).
 - Heavy deps import lazily; every stage must run with only numpy/pyyaml installed.
-- Do NOT touch `setup.cfg` or `.github/workflows/ci.yml` (CLAUDE.md: stale, needs user sign-off).
+- Do NOT touch `setup.cfg` or `.github/workflows/ci.yml` (stale; needs team sign-off).
 - Data written under `data/` (gitignored); runtime deps added to `requirements.txt`.
 - Task planner fallback vocabulary (offline FunctionGemma path): `navigate_to`, `pickup`, `place`, `inspect`, `wait`, `speak`.
 - Sim-validation gate for `/train`: policy must reach `success_rate >= 0.6` over 20 sim episodes before it is exportable (§11.5).

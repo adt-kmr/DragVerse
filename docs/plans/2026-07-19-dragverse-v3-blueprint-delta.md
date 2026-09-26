@@ -58,7 +58,7 @@ Tests: `connect()` with no `aruco_image_path` behaves exactly as before (existin
 
 ### Task 4 (A4): dependency + docs
 - Add `#   opencv-python>=4.9.0    # cv2.aruco marker detection (Phase A)` to `requirements.txt`'s optional-backends comment block, next to `open3d`/`ultralytics`/`pyserial`.
-- One-line update to `CLAUDE.md`'s architecture section: `robot/adapters/` bullet gains "; ArUco marker alignment (`capture/aruco.py`) anchors twin and robot frames per Blueprint v3 §5."
+- One-line update to the contributor notes' architecture section: `robot/adapters/` bullet gains "; ArUco marker alignment (`capture/aruco.py`) anchors twin and robot frames per Blueprint v3 §5."
 - Commit: `feat: add ArUco marker detection for twin/robot coordinate alignment`.
 
 ---
@@ -89,7 +89,7 @@ Files: modify `orchestrator/service.py` reconstruct endpoint.
 Tests: existing reconstruct test unchanged; new test with `refine: true` asserts `ply_url` differs from the un-refined path.
 
 ### Task 9 (B5): docs
-- `CLAUDE.md` reconstruction bullet: note the Scaniverse ingest + refine step and point at v3 §4 for the "hybrid, not full-NPU-splat" framing so nobody overclaims it in a demo.
+- Contributor notes, reconstruction bullet: note the Scaniverse ingest + refine step and point at v3 §4 for the "hybrid, not full-NPU-splat" framing so nobody overclaims it in a demo.
 - Commit: `feat: ingest Scaniverse exports and add structure-mask splat refinement`.
 
 ---
@@ -121,7 +121,7 @@ Files: modify `twin/unity_project/Assets/Editor/TwinGenerator.cs`.
 - Add a `README.md` note in `twin/unity_project/` listing the exact manual step: "install `com.unity.ml-agents` via Package Manager, drop `BehaviorParameters` + reward script matching `policy/rl/config.py`'s templates onto the buggy prefab."
 
 ### Task 14 (C5): docs
-- `CLAUDE.md` policy bullet: note the RL path exists behind `method: "rl"`, degrades honestly without Unity/mlagents installed, and BC remains the default/tested path in this environment.
+- Contributor notes, policy bullet: note the RL path exists behind `method: "rl"`, degrades honestly without Unity/mlagents installed, and BC remains the default/tested path in this environment.
 - Commit: `feat: add ML-Agents PPO training path behind /train {method: "rl"}, graceful fallback when mlagents-learn is absent`.
 
 ---
@@ -133,7 +133,7 @@ v3 §2/§11: the wizard becomes the product surface; the SDK becomes an internal
 ### Task 15 (D1): `dashboard/src/wizard/` route + step scaffold
 Files: create `dashboard/src/wizard/Wizard.jsx`, `dashboard/src/wizard/steps/` (`CaptureStep.jsx`, `RobotStep.jsx`, `ModelStep.jsx`, `VoiceStep.jsx`, `ActivityStep.jsx`, `DeployStep.jsx`), modify `dashboard/src/router.jsx` to add a `/wizard` route.
 - `Wizard.jsx` holds step index + accumulated state (`scanId, robotKind, modelChoice, taskText/lang, activity, deploymentId`) in `useState`, renders the active step, passes `onNext(data)`. Follows the existing component style (`Stage.jsx`/`Console.jsx` — no new state library, no router library beyond what `router.jsx` already uses).
-Tests: none required for pure scaffolding (no logic yet) — Phase D's testing happens per-step below as each gains real behavior. Ponytail: don't write a test for a component with no branches yet.
+Tests: none required for pure scaffolding (no logic yet) — Phase D's testing happens per-step below as each gains real behavior. Note: don't write a test for a component with no branches yet.
 
 ### Task 16 (D2): Step 1 — Capture
 Files: `CaptureStep.jsx`, modify `dashboard/src/api.js`.
@@ -162,7 +162,7 @@ Files: `DeployStep.jsx`.
 - "Deploy to robot" button → `POST /optimize` then `POST /deploy`; live feed panel subscribes to the existing `/ws/status` websocket (already built, unused by the dashboard today per the survey) for job progress, and polls `GET /status/{job_id}` for a `logs_url`/telemetry image if the deployed robot streams frames (`unoq.py`'s `capture_frame`) — reuse `Telemetry.jsx`'s existing rendering, don't build a second image viewer.
 
 ### Task 22 (D8): docs
-- `CLAUDE.md` dashboard bullet: note `/wizard` is the v3 product surface; `Console.jsx`'s operator view stays as the ops/debug view, not removed (v3 doesn't ask for its removal — only for a wizard to exist).
+- Contributor notes, dashboard bullet: note `/wizard` is the v3 product surface; `Console.jsx`'s operator view stays as the ops/debug view, not removed (v3 doesn't ask for its removal — only for a wizard to exist).
 - Commit: `feat: add 6-step guided wizard (dashboard/src/wizard) as the v3 web-app product surface`.
 
 ---
