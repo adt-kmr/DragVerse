@@ -62,7 +62,7 @@ The team additionally keeps the offline speech-to-text claim, which is only hone
 
 | PR | Branch | Items | Hardware needed |
 |---|---|---|---|
-| 1 | `fix/honest-repo-path-a` | 2, 3 (code), 6 (code), 7, provider labelling, repository hygiene | No |
+| 1 | `fix/path-a-reproducibility` | 2, 3 (code), 6 (code), 7, provider labelling, repository hygiene | No |
 | 2 | `feat/functiongemma-npu` | 4 | Results only |
 | 3 | `feat/whisper-npu` | Speech-to-text | Results only |
 | 4 | `feat/dashboard-real-client` | 5 | Recording only |
