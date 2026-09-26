@@ -89,7 +89,7 @@ Restructure into import-safe functions plus `main()`.
 | `--profile` | off | Enable ONNX Runtime profiling and report the per-node execution-provider split |
 | `--log PATH` | none | Write a JSON run record |
 
-Run record fields: `model_sha256`, `iterations`, `latency_ms.{p50,p95,max,mean}`, `nodes.{total,qnn,cpu}`, `execution_providers`, `perf_mode`, `onnxruntime_version`, `serial_port`, `timestamp`.
+Run record fields: `model_file`, `model_sha256`, `iterations`, `latency_ms.{p50,p95,max,mean}`, `nodes.{kernels_by_provider,cpu_nodes}` (`null` without `--profile`), `execution_providers`, `perf_mode`, `onnxruntime_version`, `serial_port`, `timestamp`. QNN runs its partition as fused kernels, so the profile counts kernels per provider and names the original nodes that fell back to CPU; it cannot give a per-node QNN count. The record uses `model_file`, not `model`, so it is never mistaken for an AI Hub record in `benchmarks/`.
 
 `build_observation` keeps its 14-value order unchanged; its docstring names `BuggyAgent.cs` as the source of that order.
 
