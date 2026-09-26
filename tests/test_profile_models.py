@@ -146,7 +146,7 @@ class FakeHub:
         import onnx
         # Inspect now: the extracted file lives in a temp dir that is gone afterwards.
         ops = {n.op_type for n in onnx.load(model).graph.node}
-        self.compiles.append({"options": options, "ops": ops})
+        self.compiles.append({"options": options, "ops": ops, "input_specs": input_specs})
         return SimpleNamespace(get_target_model=lambda: object(), url="https://hub/c/1")
 
     def submit_profile_job(self, model, device, options=None):
@@ -167,6 +167,9 @@ def test_onnx_mode_compiles_float_and_labels_it(monkeypatch):
 
     assert hub.compiles[0]["options"] == "--target_runtime qnn_dlc"
     assert "Multinomial" not in hub.compiles[0]["ops"]
+    # Buggy.onnx has a dynamic "batch" dimension; the compile gets a fixed one.
+    assert hub.compiles[0]["input_specs"] == {"obs_0": ((1, 14), "float32")}
+    assert record["input_specs"] == {"obs_0": [[1, 14], "float32"]}
     assert hub.profiles == [None, "--compute_unit cpu"]   # same binary, CPU baseline
     assert record["model"] == f"Buggy-qnn_dlc-{DET}"
     assert record["source_model"] == "Buggy.onnx"
@@ -186,6 +189,8 @@ def test_full_model_is_submitted_unmodified(monkeypatch):
     monkeypatch.setattr(pm, "_require_hub", lambda: hub)
     record = pm.profile_onnx(BUGGY, "X Elite", target_runtime="onnx")
     assert "Multinomial" in hub.compiles[0]["ops"]
+    assert hub.compiles[0]["input_specs"] == {
+        "obs_0": ((1, 14), "float32"), "action_masks": ((1, 1), "float32")}
     assert record["model"] == "Buggy-onnx"
     assert record["extracted_output"] is None
 
@@ -204,6 +209,8 @@ def test_write_results_accumulates_across_runs(tmp_path):
     pm.write_results([{"model": "b", "npu": {}}], out_dir=str(tmp_path))
     # A Path A run log shares the folder and is not an AI Hub record.
     (tmp_path / "path_a_local.json").write_text(json.dumps({"model_file": "Buggy.onnx"}))
+    # Neither is an evaluation that happens to name its model.
+    (tmp_path / "planner_eval_npu.json").write_text(json.dumps({"model": "functiongemma"}))
 
     summary = pm.write_results([], out_dir=str(tmp_path))
 

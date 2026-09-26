@@ -1,4 +1,4 @@
-"""Profile perception models on real Snapdragon silicon via the Qualcomm AI Hub device cloud.
+r"""Profile perception models on real Snapdragon silicon via the Qualcomm AI Hub device cloud.
 
 This is the measurement harness behind the "Technical Implementation" story: resource
 utilization, latency, and energy are judged on numbers from real devices, and this is what
@@ -246,6 +246,27 @@ def extract_subgraph(onnx_path: str, output: str, out_path: str) -> str:
     return out_path
 
 
+def static_input_specs(onnx_path: str) -> dict:
+    """AI Hub input specs with every dynamic dimension pinned to 1.
+
+    Unity exports a symbolic "batch" dimension. The robot runs one observation at a time,
+    so batch 1 is the shape that matters, and a fixed shape spares the compiler guessing.
+    """
+    import onnx
+    from onnx import helper
+
+    model = onnx.load(onnx_path)
+    weights = {w.name for w in model.graph.initializer}
+    specs = {}
+    for i in model.graph.input:
+        if i.name in weights:
+            continue
+        t = i.type.tensor_type
+        shape = tuple(d.dim_value if d.dim_value > 0 else 1 for d in t.shape.dim)
+        specs[i.name] = (shape, helper.tensor_dtype_to_np_dtype(t.elem_type).name)
+    return specs
+
+
 def _meets_gate(npu: dict) -> bool:
     # Blueprint section 14 gate: below this, the model needs a GPU fallback path.
     cov = npu.get("op_coverage_pct")
@@ -263,12 +284,15 @@ def profile_onnx(onnx_path: str, device_name: str, target_runtime: str = DEFAULT
         if extract_output:
             model_path = extract_subgraph(onnx_path, extract_output,
                                           os.path.join(tmp, f"{stem}.onnx"))
-        npu = profile_model(model_path, device_name, target_runtime, compare_cpu=compare)
+        specs = static_input_specs(model_path)
+        npu = profile_model(model_path, device_name, target_runtime, input_specs=specs,
+                            compare_cpu=compare)
 
     record: typing.Dict[str, typing.Any] = {
         "model": name,
         "source_model": os.path.basename(onnx_path),
         "extracted_output": extract_output,
+        "input_specs": {k: [list(shape), dtype] for k, (shape, dtype) in specs.items()},
         "npu": npu,
     }
     if "cpu_baseline" in npu:
@@ -422,7 +446,7 @@ def write_results(records: list, out_dir: str = BENCHMARK_DIR) -> str:
 
     Rebuilding from disk is what lets separate runs accumulate instead of each run
     replacing the summary with only its own models. Other JSON in the folder (Path A run
-    logs, evaluations) has no "model" key and is left out.
+    logs, evaluations) is left out: an AI Hub record has both a "model" and an "npu" key.
     """
     os.makedirs(out_dir, exist_ok=True)
     for r in records:
@@ -435,7 +459,7 @@ def write_results(records: list, out_dir: str = BENCHMARK_DIR) -> str:
             continue
         with open(path) as f:
             doc = json.load(f)
-        if isinstance(doc, dict) and "model" in doc:
+        if isinstance(doc, dict) and "model" in doc and "npu" in doc:
             models.append(doc)
 
     summary_path = os.path.join(out_dir, "summary.json")

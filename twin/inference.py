@@ -36,6 +36,13 @@ def _positive_int(text: str) -> int:
     return value
 
 
+def _positive_float(text: str) -> float:
+    value = float(text)
+    if not value > 0:
+        raise argparse.ArgumentTypeError(f"must be greater than 0, got {value}")
+    return value
+
+
 def parse_args(argv=None) -> argparse.Namespace:
     ap = argparse.ArgumentParser(description="Run the Path A policy on the Hexagon NPU.")
     ap.add_argument("--port", help="serial port of the motor controller, e.g. COM5")
@@ -43,6 +50,8 @@ def parse_args(argv=None) -> argparse.Namespace:
                     help="must match buggy_motor_controller.ino")
     ap.add_argument("--model", type=Path, default=DEFAULT_MODEL)
     ap.add_argument("--iterations", type=_positive_int, default=200)
+    ap.add_argument("--rate-hz", type=_positive_float, default=50.0,
+                    help="commands per second sent to the motor controller (serial only)")
     ap.add_argument("--perf-mode", default="burst", help="QNN htp_performance_mode")
     ap.add_argument("--no-serial", action="store_true",
                     help="benchmark the NPU without a motor controller")
@@ -162,11 +171,16 @@ def open_serial(port: str, baud: int):
     return link
 
 
-def drive(session, iterations: int, link) -> tuple:
+def drive(session, iterations: int, link, period_s: float = 0.0) -> tuple:
     """Run the policy `iterations` times, streaming each action to `link` if given.
 
     The observation is a fixed demo target 5 m straight ahead with the previous action fed
     back. The buggy is always left neutral, including when the loop is interrupted.
+
+    With a link, each iteration is padded to `period_s`. The sketch answers every command
+    with an "OK s,t" line longer than the command itself, so an unpaced stream overruns
+    its 64-byte receive buffer and garbles commands. Latency samples time only
+    `session.run`, so pacing does not affect them.
     """
     inputs = {i.name for i in session.get_inputs()}
     det_idx = [o.name for o in session.get_outputs()].index(DET_OUTPUT)
@@ -174,6 +188,7 @@ def drive(session, iterations: int, link) -> tuple:
     samples = []
     try:
         for _ in range(iterations):
+            tick = time.perf_counter()
             feed = {"obs_0": build_observation(
                 swivel_angle_rad=0.0, prev_steer=steer, prev_throttle=throttle,
                 local_target_pos=(0.0, 0.0, 5.0), forward_dot=1.0, right_dot=0.0,
@@ -188,6 +203,8 @@ def drive(session, iterations: int, link) -> tuple:
             steer, throttle = float(action[0]), float(action[1])
             if link is not None:
                 link.write(format_command(steer, throttle))
+                if period_s > 0:
+                    time.sleep(max(0.0, period_s - (time.perf_counter() - tick)))
     finally:
         if link is not None:
             link.write(format_command(*NEUTRAL))
@@ -210,6 +227,9 @@ def build_record(args, samples: list, providers, split, ort_version: str) -> dic
         "perf_mode": args.perf_mode,
         "onnxruntime_version": ort_version,
         "serial_port": None if args.no_serial else args.port,
+        "rate_hz": None if args.no_serial else args.rate_hz,
+        # ONNX Runtime profiling adds per-node timing overhead to every sample.
+        "profiled": bool(args.profile),
         "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "latency_source": "onnxruntime-qnn-local",
     }
@@ -231,9 +251,11 @@ def main(argv=None) -> int:
     print(f"Session created on {session.get_providers()}")
     link = None if args.no_serial else open_serial(args.port, args.baud)
     try:
-        samples, (steer, throttle) = drive(session, args.iterations, link)
+        samples, (steer, throttle) = drive(session, args.iterations, link,
+                                           period_s=1.0 / args.rate_hz)
     finally:
         if link is not None:
+            link.flush()  # the neutral command must leave the host before the port closes
             link.close()
 
     split = None

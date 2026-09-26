@@ -44,7 +44,7 @@ There are two parts:
 |---|---|---|
 | Policy | Unity ML-Agents PPO (`twin/Buggy.onnx`) | Behaviour-cloned linear policy (`policy/finetune/train_bc.py`) |
 | Inputs | 14 | 2 |
-| Precision | float32 ONNX (HTP execution precision recorded by the run log) | int8 via `LinearPolicy.quantize_int8` |
+| Precision | float32 ONNX; the QNN execution provider runs float models at FP16 on the HTP by default (`enable_htp_fp16_precision`) | int8 via `LinearPolicy.quantize_int8` |
 | Runtime | ONNX Runtime + QNN execution provider | numpy |
 | Compute unit | Hexagon NPU, Snapdragon X Elite AI PC | CPU |
 | Actuation | Plain Arduino over serial (`twin/buggy_motor_controller.ino`) | `SimRobot`; `UnoQRobot` serial adapter |
@@ -69,16 +69,20 @@ On the Snapdragon X Elite AI PC (Windows on ARM, native ARM64 Python):
 ```powershell
 pip install -r requirements.txt -r requirements-npu.txt
 python twin/inference.py --port COM5
-python twin/inference.py --no-serial --iterations 1000 --profile --log benchmarks/path_a_local.json
+python twin/inference.py --no-serial --iterations 1000 --log benchmarks/path_a_local.json
+python twin/inference.py --no-serial --iterations 200 --profile --log benchmarks/path_a_profile.json
 ```
 
 Without `--port` the script lists the serial ports it can see and exits. `--profile`
 records which execution provider ran each part of the graph and names any node that fell
-back to the CPU. `--log` writes a JSON record with latency percentiles, the model hash and
-the ONNX Runtime version.
+back to the CPU; profiling adds overhead, so latency comes from a run without it. `--log`
+writes a JSON record with latency percentiles, the model hash and the ONNX Runtime
+version. Commands go to the Arduino at `--rate-hz` (default 50), because the sketch answers
+each command with a line of its own and an unpaced stream overruns its receive buffer.
 
 The script feeds a fixed demo observation (target 5 m straight ahead) with the previous
-action fed back. `build_observation` documents the order of the 14 values.
+action fed back. The script used at the event passed zeros for the previous action.
+`build_observation` documents the order of the 14 values.
 
 ### Path B: pipeline policy on the robot CPU
 

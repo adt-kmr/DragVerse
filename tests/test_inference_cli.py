@@ -5,7 +5,10 @@ parts that decide what gets sent to the buggy and what gets written to the run l
 """
 import hashlib
 import importlib
+import importlib.util
 import json
+import os
+import subprocess
 import sys
 
 import numpy as np
@@ -135,12 +138,51 @@ def test_interrupted_drive_leaves_the_buggy_neutral():
 
 
 def test_drive_runs_the_real_policy_on_cpu():
-    ort = pytest.importorskip("onnxruntime")
-    session = ort.InferenceSession(str(inference.DEFAULT_MODEL),
-                                   providers=["CPUExecutionProvider"])
-    samples, (steer, throttle) = inference.drive(session, 5, None)
-    assert len(samples) == 5
+    # find_spec, not importorskip: importing onnxruntime here is exactly what must not happen.
+    if importlib.util.find_spec("onnxruntime") is None:
+        pytest.skip("onnxruntime not installed")
+    # In a child process: ONNX Runtime's C++ teardown at interpreter exit intermittently
+    # aborts the process on macOS (libc++abi recursive_mutex), which would take the whole
+    # pytest run down with it. os._exit skips that teardown once the result is printed.
+    script = (
+        "import json, os, sys\n"
+        "import onnxruntime as ort\n"
+        "from twin import inference\n"
+        "s = ort.InferenceSession(str(inference.DEFAULT_MODEL),"
+        " providers=['CPUExecutionProvider'])\n"
+        "samples, last = inference.drive(s, 5, None)\n"
+        "print(json.dumps({'n': len(samples), 'last': last}))\n"
+        "sys.stdout.flush()\n"
+        "os._exit(0)\n"
+    )
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    run = subprocess.run([sys.executable, "-c", script], cwd=root, capture_output=True,
+                         text=True, timeout=120)
+    assert run.returncode == 0, run.stderr
+    result = json.loads(run.stdout.strip().splitlines()[-1])
+    steer, throttle = result["last"]
+    assert result["n"] == 5
     assert -1.0 <= steer <= 1.0 and -1.0 <= throttle <= 1.0
+
+
+def test_serial_stream_is_paced_and_benchmark_is_not(monkeypatch):
+    # The sketch answers every command with an "OK s,t" line longer than the command, so an
+    # unpaced stream overruns its 64-byte receive buffer and garbles commands.
+    sleeps: list = []
+    monkeypatch.setattr(inference.time, "sleep", sleeps.append)
+    inference.drive(FakeSession(), 3, FakeLink(), period_s=0.02)
+    assert len(sleeps) == 3 and all(0 < s <= 0.02 for s in sleeps)
+
+    sleeps.clear()
+    inference.drive(FakeSession(), 3, None, period_s=0.02)
+    assert sleeps == []
+
+
+@pytest.mark.parametrize("bad", ["0", "-5", "fast"])
+def test_rate_must_be_positive(bad):
+    assert inference.parse_args(["--port", "COM5", "--rate-hz", "20"]).rate_hz == 20.0
+    with pytest.raises(SystemExit):
+        inference.parse_args(["--port", "COM5", "--rate-hz", bad])
 
 
 def test_run_record_carries_what_ran(tmp_path):
@@ -158,4 +200,16 @@ def test_run_record_carries_what_ran(tmp_path):
     assert record["iterations"] == 3
     assert record["latency_ms"]["p50"] == 2.0
     assert record["execution_providers"] == ["QNNExecutionProvider", "CPUExecutionProvider"]
+    assert record["profiled"] is False   # profiling inflates latency; the record says so
+    assert record["rate_hz"] is None     # unpaced: no motor controller attached
     json.dumps(record)
+
+
+def test_serial_record_names_its_rate(tmp_path):
+    model = tmp_path / "m.onnx"
+    model.write_bytes(b"abc")
+    args = inference.parse_args(["--port", "COM5", "--model", str(model), "--profile"])
+    record = inference.build_record(args, [1.0], ["QNNExecutionProvider"], None, "1.23.0")
+    assert record["serial_port"] == "COM5"
+    assert record["rate_hz"] == 50.0
+    assert record["profiled"] is True

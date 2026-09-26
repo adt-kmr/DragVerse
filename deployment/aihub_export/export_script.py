@@ -1,8 +1,9 @@
-"""Policy -> quantized on-device artifact.
+"""Path B policy -> deployable artifact.
 
-Qualcomm AI Hub when a token is configured; otherwise a local int8 bundle so the
-pipeline still produces a real, loadable artifact offline. Which path ran is always
-reported in `backend` — a local bundle must never be mistaken for a Hexagon-compiled one.
+With a token, Qualcomm AI Hub compiles it (float, no quantize job) and profiles it on a
+real device. Otherwise a local int8 bundle is written so the pipeline still produces a
+real, loadable artifact offline. Which path ran is always reported in `backend`: a local
+bundle must never be mistaken for a Hexagon-compiled one.
 """
 import json
 import os

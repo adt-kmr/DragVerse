@@ -84,12 +84,13 @@ Restructure into import-safe functions plus `main()`.
 | `--baud` | `115200` | Matches `buggy_motor_controller.ino` |
 | `--model` | `Buggy.onnx` resolved relative to the script | Removes the working-directory dependency |
 | `--iterations` | `200` | Benchmark length |
+| `--rate-hz` | `50` | Command rate to the Arduino. The sketch answers each command with a longer `OK` line, so an unpaced stream overruns its 64-byte receive buffer. Serial only |
 | `--perf-mode` | `burst` | `htp_performance_mode` |
 | `--no-serial` | off | NPU-only benchmark without a motor controller |
 | `--profile` | off | Enable ONNX Runtime profiling and report the per-node execution-provider split |
 | `--log PATH` | none | Write a JSON run record |
 
-Run record fields: `model_file`, `model_sha256`, `iterations`, `latency_ms.{p50,p95,max,mean}`, `nodes.{kernels_by_provider,cpu_nodes}` (`null` without `--profile`), `execution_providers`, `perf_mode`, `onnxruntime_version`, `serial_port`, `timestamp`. QNN runs its partition as fused kernels, so the profile counts kernels per provider and names the original nodes that fell back to CPU; it cannot give a per-node QNN count. The record uses `model_file`, not `model`, so it is never mistaken for an AI Hub record in `benchmarks/`.
+Run record fields: `model_file`, `model_sha256`, `iterations`, `latency_ms.{p50,p95,max,mean}`, `nodes.{kernels_by_provider,cpu_nodes}` (`null` without `--profile`), `execution_providers`, `perf_mode`, `onnxruntime_version`, `serial_port`, `rate_hz`, `profiled`, `timestamp`, `latency_source`. Profiling adds overhead, so latency is taken from a run without `--profile`. QNN runs its partition as fused kernels, so the profile counts kernels per provider and names the original nodes that fell back to CPU; it cannot give a per-node QNN count. The record uses `model_file`, not `model`, so it is never mistaken for an AI Hub record in `benchmarks/`.
 
 `build_observation` keeps its 14-value order unchanged; its docstring names `BuggyAgent.cs` as the source of that order.
 
@@ -98,11 +99,12 @@ Dependencies: `onnxruntime-qnn` and `pyserial` added to `requirements-npu.txt` w
 ### 5.2 `deployment/aihub_export/profile_models.py`
 
 - New CLI mode: `--onnx PATH` with `--target-runtime {onnx,qnn_dlc}` and optional `--deterministic-output NAME`.
+- Every dynamic input dimension (Unity's `batch`) is pinned to 1 through `input_specs`, and the record keeps the specs used.
 - `--deterministic-output` extracts the subgraph from the model inputs it needs to the named output via `onnx.utils.Extractor` into a temporary file before submission.
 - Compilation for this mode is float. Records carry `precision: "float"` and `source_model`, `extracted_output` fields.
 - Reuses `profile_model()` (including `compare_cpu`).
 - `profile_model()` default options change to float; precision labelling is derived from whether a quantize step actually ran, not from option text.
-- `write_results()` merges: it writes the per-model file, then rebuilds `summary.json` from every JSON record in `benchmarks/` so separate runs do not overwrite each other.
+- `write_results()` merges: it writes the per-model file, then rebuilds `summary.json` from every JSON record in `benchmarks/` so separate runs do not overwrite each other. A file counts as an AI Hub record only if it has both `model` and `npu` keys.
 
 `deployment/aihub_export/export_script.py`: `op_coverage` is `None` when `compute_unit_ratio` is absent; the compile uses float options and reports `precision: "float"`.
 
