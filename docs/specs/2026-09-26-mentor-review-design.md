@@ -84,6 +84,7 @@ Restructure into import-safe functions plus `main()`.
 | `--baud` | `115200` | Matches `buggy_motor_controller.ino` |
 | `--model` | `Buggy.onnx` resolved relative to the script | Removes the working-directory dependency |
 | `--iterations` | `200` | Benchmark length |
+| (serial) | – | Opening the port resets the Arduino; the script waits for the sketch's `READY` line (5 s timeout, then a warning) before sending commands |
 | `--rate-hz` | `50` | Command rate to the Arduino. The sketch answers each command with a longer `OK` line, so an unpaced stream overruns its 64-byte receive buffer. Serial only |
 | `--perf-mode` | `burst` | `htp_performance_mode` |
 | `--no-serial` | off | NPU-only benchmark without a motor controller |

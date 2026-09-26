@@ -163,11 +163,24 @@ def open_session(model: Path, perf_mode: str, profile: bool):
     return ort, ort.InferenceSession(str(model), sess_options=options)
 
 
-def open_serial(port: str, baud: int):
+def open_serial(port: str, baud: int, ready_timeout: float = 5.0):
+    """Open the port and wait for buggy_motor_controller.ino to print READY.
+
+    Opening the port resets the Arduino, and the sketch holds neutral for 2 s so the ESC
+    can arm before it reads commands. Commands sent earlier are lost or overflow its
+    receive buffer, so wait for READY instead of guessing a delay.
+    """
     import serial
 
     link = serial.Serial(port, baud, timeout=0.1)
-    time.sleep(2)  # the Arduino resets when the port opens
+    deadline = time.monotonic() + ready_timeout
+    seen = b""
+    while time.monotonic() < deadline:
+        seen = (seen + link.readline())[-64:]   # a read timeout can split the line
+        if b"READY" in seen:
+            return link
+    print(f"warning: no READY from {port} within {ready_timeout:.0f} s; is "
+          "buggy_motor_controller.ino flashed? Sending commands anyway.", file=sys.stderr)
     return link
 
 

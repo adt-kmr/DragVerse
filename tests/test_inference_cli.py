@@ -216,3 +216,40 @@ def test_serial_record_names_its_rate(tmp_path):
     assert record["serial_port"] == "COM5"
     assert record["rate_hz"] == 50.0
     assert record["profiled"] is True
+
+
+class FakeSerial:
+    """pyserial stand-in: replays `lines` from readline(), then b"" (a read timeout)."""
+
+    def __init__(self, lines):
+        self.lines = list(lines)
+
+    def readline(self):
+        return self.lines.pop(0) if self.lines else b""
+
+
+def _fake_pyserial(monkeypatch, lines):
+    port = FakeSerial(lines)
+    module = type(sys)("serial")
+    module.Serial = lambda *a, **k: port   # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "serial", module)
+    return port
+
+
+def test_open_serial_waits_for_the_sketch_to_be_ready(monkeypatch, capsys):
+    # Opening the port resets the Arduino; the sketch prints READY after arming the ESC.
+    port = _fake_pyserial(monkeypatch, [b"", b"\x00garbage\r\n", b"READY\r\n"])
+    assert inference.open_serial("COM5", 115200) is port
+    assert port.lines == []
+    assert "warning" not in capsys.readouterr().err
+
+    # A read timeout can split the line.
+    port = _fake_pyserial(monkeypatch, [b"REA", b"DY\r\n"])
+    assert inference.open_serial("COM5", 115200, ready_timeout=1.0) is port
+    assert "warning" not in capsys.readouterr().err
+
+
+def test_open_serial_warns_when_no_ready_arrives(monkeypatch, capsys):
+    port = _fake_pyserial(monkeypatch, [])
+    assert inference.open_serial("COM5", 115200, ready_timeout=0.05) is port
+    assert "READY" in capsys.readouterr().err
