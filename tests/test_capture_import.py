@@ -3,14 +3,17 @@ import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 
+from orchestrator import db
+from orchestrator.service import app
+
 from tests.test_scaniverse import COLORS, POINTS, write_binary_ply, write_obj
 
 
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
     monkeypatch.setenv("DRAGVERSE_DATA", str(tmp_path / "data"))
-    monkeypatch.setenv("DRAGVERSE_DB", str(tmp_path / "dragverse.db"))
-    from orchestrator.service import app
+    # db.DB_PATH is read once at import, so the env var alone would hit data/dragverse.db.
+    monkeypatch.setattr(db, "DB_PATH", str(tmp_path / "dragverse.db"))
     return TestClient(app)
 
 
