@@ -19,7 +19,6 @@ of the [system design blueprint](../detailed%20implementation%20doc.md).
 | Stable-Baselines3 | MIT | RL / imitation-learning utilities |
 | LeRobot | Apache-2.0 | Pretrained policy checkpoints, BC training loop |
 | Qualcomm AI Hub / QAIRT / qai-hub-models | Qualcomm proprietary SDK terms — see app.aihub.qualcomm.com | Compile/quantize/profile for Hexagon NPU |
-| LiteRT / LiteRT-LM | Apache-2.0 | On-device FunctionGemma inference |
 | FastAPI | MIT | Service scaffolding |
 | React | MIT | Dashboard scaffolding |
 | Postgres | PostgreSQL License (permissive) | Metadata store |
