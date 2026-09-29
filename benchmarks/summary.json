@@ -1,0 +1,256 @@
+{
+  "models": [
+    {
+      "model": "Buggy-onnx",
+      "source_model": "Buggy.onnx",
+      "extracted_output": null,
+      "input_specs": {
+        "obs_0": [
+          [
+            1,
+            14
+          ],
+          "float32"
+        ],
+        "action_masks": [
+          [
+            1,
+            1
+          ],
+          "float32"
+        ]
+      },
+      "npu": {
+        "op_coverage_pct": 96.77,
+        "time_on_npu_pct": 19.35,
+        "layers_total": 31,
+        "layers_on_npu": 30,
+        "fallback_units": [
+          "CPU"
+        ],
+        "top_fallback_layers": [
+          {
+            "name": "/Multinomial",
+            "type": "Multinomial",
+            "unit": "CPU",
+            "us": 50
+          }
+        ],
+        "latency_ms": 0.062,
+        "peak_memory_bytes": 29843456,
+        "first_load_time_ms": 2262.991,
+        "latency_source": "ai-hub-device-cloud",
+        "runs": 100,
+        "latency_p50_ms": 0.066,
+        "latency_p95_ms": 0.148,
+        "latency_p99_ms": 0.501,
+        "latency_mean_ms": 0.0863,
+        "device": "Snapdragon X Elite CRD",
+        "runtime": "onnx",
+        "precision": "float",
+        "quantized": false,
+        "compile_options": "--target_runtime onnx",
+        "compile_job_url": "https://workbench.aihub.qualcomm.com/jobs/j5m076zdg/",
+        "profile_job_url": "https://workbench.aihub.qualcomm.com/jobs/jgnz4mekg/"
+      },
+      "cpu": {
+        "op_coverage_pct": 0.0,
+        "time_on_npu_pct": 0.0,
+        "layers_total": 25,
+        "layers_on_npu": 0,
+        "fallback_units": [
+          "CPU"
+        ],
+        "top_fallback_layers": [
+          {
+            "name": "/_discrete_distribution/Slice",
+            "type": "Slice",
+            "unit": "CPU",
+            "us": 75
+          },
+          {
+            "name": "node_Mul_13",
+            "type": "Mul",
+            "unit": "CPU",
+            "us": 21
+          },
+          {
+            "name": "/ArgMax",
+            "type": "ArgMax",
+            "unit": "CPU",
+            "us": 21
+          },
+          {
+            "name": "/Add",
+            "type": "Add",
+            "unit": "CPU",
+            "us": 21
+          },
+          {
+            "name": "/Clip",
+            "type": "Clip",
+            "unit": "CPU",
+            "us": 21
+          }
+        ],
+        "latency_ms": 0.017,
+        "peak_memory_bytes": 20267008,
+        "first_load_time_ms": 38.547,
+        "latency_source": "ai-hub-device-cloud",
+        "runs": 100,
+        "latency_p50_ms": 0.019,
+        "latency_p95_ms": 0.032,
+        "latency_p99_ms": 0.048,
+        "latency_mean_ms": 0.0267,
+        "device": "Snapdragon X Elite CRD",
+        "runtime": "onnx",
+        "compute_unit": "cpu",
+        "profile_job_url": "https://workbench.aihub.qualcomm.com/jobs/jp1n9wd8g/"
+      },
+      "speedup_vs_cpu": 0.29,
+      "meets_80pct_npu_gate": true
+    },
+    {
+      "model": "Buggy-qnn_dlc-deterministic_continuous_actions",
+      "source_model": "Buggy.onnx",
+      "extracted_output": "deterministic_continuous_actions",
+      "input_specs": {
+        "obs_0": [
+          [
+            1,
+            14
+          ],
+          "float32"
+        ]
+      },
+      "npu": {
+        "op_coverage_pct": 100.0,
+        "time_on_npu_pct": null,
+        "layers_total": 14,
+        "layers_on_npu": 14,
+        "fallback_units": [],
+        "top_fallback_layers": [],
+        "latency_ms": 0.142,
+        "peak_memory_bytes": 14716928,
+        "first_load_time_ms": 504.741,
+        "latency_source": "ai-hub-device-cloud",
+        "runs": 100,
+        "latency_p50_ms": 0.151,
+        "latency_p95_ms": 0.183,
+        "latency_p99_ms": 0.204,
+        "latency_mean_ms": 0.1661,
+        "device": "Snapdragon X Elite CRD",
+        "runtime": "qnn_dlc",
+        "precision": "float",
+        "quantized": false,
+        "compile_options": "--target_runtime qnn_dlc",
+        "compile_job_url": "https://workbench.aihub.qualcomm.com/jobs/jg9zry98p/",
+        "profile_job_url": "https://workbench.aihub.qualcomm.com/jobs/jgddkq7zg/"
+      },
+      "cpu": {
+        "op_coverage_pct": 0.0,
+        "time_on_npu_pct": 0.0,
+        "layers_total": 12,
+        "layers_on_npu": 0,
+        "fallback_units": [
+          "CPU"
+        ],
+        "top_fallback_layers": [
+          {
+            "name": "node_Mul_3",
+            "type": "node",
+            "unit": "CPU",
+            "us": 478
+          },
+          {
+            "name": "/network_body/_body_endoder/seq_layers/seq_layers.3/Mul",
+            "type": "/network",
+            "unit": "CPU",
+            "us": 473
+          },
+          {
+            "name": "node_Mul_1",
+            "type": "node",
+            "unit": "CPU",
+            "us": 457
+          },
+          {
+            "name": "/network_body/_body_endoder/seq_layers/seq_layers.1/Mul",
+            "type": "/network",
+            "unit": "CPU",
+            "us": 442
+          },
+          {
+            "name": "/network_body/observation_encoder/processors.0/normalizer/Sub",
+            "type": "/network",
+            "unit": "CPU",
+            "us": 13
+          }
+        ],
+        "latency_ms": 1.702,
+        "peak_memory_bytes": 6705152,
+        "first_load_time_ms": 15.821,
+        "latency_source": "ai-hub-device-cloud",
+        "runs": 100,
+        "latency_p50_ms": 1.873,
+        "latency_p95_ms": 3.351,
+        "latency_p99_ms": 3.447,
+        "latency_mean_ms": 2.2945,
+        "device": "Snapdragon X Elite CRD",
+        "runtime": "qnn_dlc",
+        "compute_unit": "cpu",
+        "profile_job_url": "https://workbench.aihub.qualcomm.com/jobs/j568xz7ng/"
+      },
+      "speedup_vs_cpu": 12.4,
+      "meets_80pct_npu_gate": true
+    },
+    {
+      "model": "Buggy_fixed_qdq-qnn_dlc",
+      "source_model": "Buggy_fixed_qdq.onnx",
+      "source_model_sha256": "f9cc946d15b7310c075250a6b4d92c233e0657fe32f72954d6a1377db5abb3fe",
+      "extracted_output": null,
+      "qdq_contrib_ops_converted": true,
+      "input_specs": {
+        "obs_0": [
+          [
+            1,
+            14
+          ],
+          "float32"
+        ]
+      },
+      "npu": {
+        "op_coverage_pct": 100.0,
+        "time_on_npu_pct": null,
+        "layers_total": 18,
+        "layers_on_npu": 18,
+        "fallback_units": [],
+        "top_fallback_layers": [],
+        "latency_ms": 0.147,
+        "peak_memory_bytes": 14757888,
+        "first_load_time_ms": 517.01,
+        "latency_source": "ai-hub-device-cloud",
+        "runs": 100,
+        "latency_p50_ms": 0.155,
+        "latency_p95_ms": 0.293,
+        "latency_p99_ms": 0.413,
+        "latency_mean_ms": 0.1831,
+        "device": "Snapdragon X Elite CRD",
+        "runtime": "qnn_dlc",
+        "precision": "qdq",
+        "quantized": true,
+        "compile_options": "--target_runtime qnn_dlc",
+        "compile_job_url": "https://workbench.aihub.qualcomm.com/jobs/jgk21qnog/",
+        "profile_job_url": "https://workbench.aihub.qualcomm.com/jobs/j5wlkqe6p/"
+      },
+      "cpu": {
+        "error": "profile failed: Failed to profile the model: Failed to call QnnModel_composeGraphsFromDlc: MODEL_GRAPH_ERROR.",
+        "device": "Snapdragon X Elite CRD",
+        "runtime": "qnn_dlc",
+        "compute_unit": "cpu",
+        "profile_job_url": "https://workbench.aihub.qualcomm.com/jobs/jp4y7vw8p/"
+      },
+      "meets_80pct_npu_gate": true
+    }
+  ]
+}

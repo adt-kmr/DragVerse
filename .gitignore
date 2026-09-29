@@ -184,3 +184,6 @@ capture/android/**/build/
 
 twin/Buggy_fixed_*
 !twin/Buggy_fixed_qdq.onnx
+
+# Local working log of the mentor review; not published
+docs/mentor-review-log.md
