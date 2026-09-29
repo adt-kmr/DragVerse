@@ -172,8 +172,10 @@ npm run dev
 ```
 
 The dashboard has a landing page (`/`) and an operator console (`/dashboard`) that shows
-each pipeline stage. The console currently runs against a built-in mock of the
-orchestrator; reconnecting it to the live API is in progress.
+each pipeline stage. `npm run dev` proxies the console to the orchestrator at
+`http://localhost:8000` (set `ORCHESTRATOR_URL` to change it). The public demo on Vercel
+has no orchestrator, so it runs a simulated replay and says "simulated demo" on screen;
+`DASHBOARD_MODE=simulated npm run build` produces the same build locally.
 
 Environment variables (copy `.env.example` to `.env`):
 
@@ -214,6 +216,8 @@ tests/            pytest suite
 - Path A training sources: Unity agent script and ML-Agents trainer configuration
 - Path A NPU build: one QNN kernel on the Hexagon NPU, latency and CPU accuracy measured
 - Path B validated in simulation
+- Dashboard: uses the live orchestrator, except the public demo on Vercel, which has no
+  orchestrator and runs a replay labelled "simulated demo" on screen
 
 ### In progress
 
@@ -222,8 +226,6 @@ tests/            pytest suite
 - FunctionGemma 270M task planning on the Hexagon NPU
 - Whisper speech-to-text on the Hexagon NPU
 - AI Hub compile and profile of `Buggy.onnx` on Snapdragon X Elite
-- Dashboard connected to the live orchestrator, with a clearly labelled replay for the
-  public demo
 
 ## Team
 

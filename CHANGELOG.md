@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Dashboard: `dashboard/src/api.js` is the orchestrator client again. Vercel builds (or
+  `DASHBOARD_MODE=simulated`) use the replay in `dashboard/src/sim.js`, which the console
+  labels "simulated demo" and which reports no latency or NPU figures. UI copy now matches
+  the README, and the model and robot pickers with no backend behind them are removed.
 - `fix_for_qnn.py` moved to `twin/` and runs as `python -m twin.fix_for_qnn`.
 - README: states that the event ran `Buggy.onnx` and that the NPU numbers are for the
   quantized `Buggy_fixed_qdq.onnx`; publishes the committed Path A measurements.

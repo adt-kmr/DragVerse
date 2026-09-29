@@ -13,22 +13,22 @@ const STEPS = [
   ["01", "Capture", "Chunked ARCore frames from the companion app.",
    "POST /capture → scan_id, frame_count"],
   ["02", "Reconstruct",
-   "Two paths, chosen per run: depth fusion for speed, COLMAP and gsplat when the scan has to hold up under a camera move.",
+   "Two paths, chosen per run: depth fusion for speed, COLMAP when the scan has to hold up under a camera move.",
    "POST /reconstruct → mesh_id, point_count"],
   ["03", "Segment",
    "Geometry first — the floor splits off as a z-slab, the rest clusters by voxel connectivity and is labelled by shape. No weights to download, which is what keeps the stage offline.",
    "POST /segment → objects_id, objects[]"],
   ["04", "Generate twin",
-   "Each label maps to a Unity prefab and a collider type, then Unity builds the scene in batch mode.",
+   "Each label maps to a Unity prefab and a collider type, written as a Unity scene manifest with a navigation grid.",
    "POST /generate-twin → twin_id, unity_scene_url"],
   ["05", "Plan",
-   "Say the task in English or Hindi. Sarvam plans it when a key is set; FunctionGemma plans it on the device when one is not.",
+   "Say the task in English or Hindi. Sarvam plans it when a key is set; an offline keyword planner handles it when one is not.",
    "POST /plan → task_graph_id, provider"],
   ["06", "Train",
    "Behaviour cloning against the twin, then twenty evaluation episodes. A policy below the gate cannot leave this step.",
    "POST /train → policy_id, sim_success_rate"],
   ["07", "Optimize",
-   "Qualcomm AI Hub export, with local QAIRT conversion as the fallback when the token is absent.",
+   "An int8 bundle, or a Qualcomm AI Hub compile when a token is set.",
    "POST /optimize → artifact_id, op_coverage, est_latency"],
   ["08", "Deploy", "Same call, simulated robot or an UNO Q on the bench.",
    "POST /deploy → deployment_id, pose_trace"],
@@ -36,8 +36,8 @@ const STEPS = [
 
 const TIERS = [
   ["Phone", "ARCore session, chunked upload. The only sensor in the system."],
-  ["AI PC", "Reconstruction, segmentation, Unity batch build, behaviour cloning."],
-  ["Snapdragon", "The quantized policy, executing on the NPU with the radios off."],
+  ["AI PC", "Reconstruction, segmentation, twin generation, behaviour cloning; the Unity policy of Path A on its Hexagon NPU."],
+  ["Robot", "The int8 behaviour-cloned policy on the robot CPU, offline."],
 ];
 
 // NOTE: streamlined workflow steps focused on user onboarding perspective
@@ -45,9 +45,9 @@ const SCANIVERSE_STEPS = [
   ["01", "Capture Space (Scaniverse)", "Scan your physical room or environment using Scaniverse on your mobile device and export the scan as a .ply or .obj file.", "User Action: Scaniverse App → Export PLY/OBJ"],
   ["02", "Onboard & Import Scan", "Open the DragVerse dashboard, set up your project workspace, and drag-and-drop your exported Scaniverse 3D file.", "User Action: Workspace Onboarding → Upload Scan"],
   ["03", "Verify 3D Segmentation", "Inspect auto-detected floor planes and clustered 3D objects with interactive AI semantic labels.", "User Action: Review 3D Scene & Object Labels"],
-  ["04", "Generate Digital Twin", "Convert labeled objects into a 1:1 simulation environment in Unity, complete with physics colliders.", "User Action: Generate Physics-Ready Twin"],
-  ["05", "Instruct Task & Train", "Specify the robot's objective using voice or text prompts, then run RL policy training in simulation.", "User Action: Voice/Text Prompt → Train Policy"],
-  ["06", "Deploy to Snapdragon", "Export the quantized neural policy directly to Snapdragon NPU silicon for zero-latency, offline execution.", "User Action: Deploy Binary to Edge Hardware"],
+  ["04", "Generate Digital Twin", "Convert labeled objects into a Unity scene manifest with collider types and a navigation grid.", "User Action: Generate Physics-Ready Twin"],
+  ["05", "Instruct Task & Train", "Specify the robot's objective as a text prompt, then train a behaviour-cloned policy against the twin in simulation.", "User Action: Text Prompt → Train Policy"],
+  ["06", "Deploy", "Quantize the policy to int8 and run it on the simulated robot or an Arduino UNO Q over serial.", "User Action: Deploy to Robot"],
 ];
 
 export default function Landing() {
@@ -218,7 +218,7 @@ export default function Landing() {
         <div className="band__body">
           <h2 className="title" data-reveal>User onboarding & Scaniverse workflow.</h2>
           <p className="prose" data-reveal>
-            Step-by-step user onboarding journey: from scanning a physical environment with Scaniverse to deploying an autonomous policy onto Snapdragon edge hardware:
+            Step-by-step user onboarding journey: from scanning a physical environment with Scaniverse to deploying a trained policy to a robot:
           </p>
 
           <ol className="steps">

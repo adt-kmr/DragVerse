@@ -882,6 +882,7 @@ body {
 
 .link.up { color: var(--mint-ink); }
 .link.down { color: var(--coral); }
+.link.sim { color: var(--coral); }
 
 .console__grid {
   display: grid;

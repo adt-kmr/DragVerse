@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 
-import * as api from "./api.js";
+import * as api from "./backend.js";
 import Floorplan from "./Floorplan.jsx";
 import JobFeed from "./JobFeed.jsx";
 import Stage from "./Stage.jsx";
@@ -29,16 +29,7 @@ export default function Console() {
   const [lang, setLang] = useState("en");
   const [device, setDevice] = useState(DEFAULT_DEVICE);
   const [robotKind, setRobotKind] = useState("sim");
-  const [customRobotKind, setCustomRobotKind] = useState("");
   const [rescanId, setRescanId] = useState("");
-  
-  // New selections
-  const [aiModelSource, setAiModelSource] = useState("qualcomm");
-  const [qualcommModel, setQualcommModel] = useState("Llama-3-8B-Chat-AWQ");
-  const [localModel, setLocalModel] = useState("Gemma 4");
-  const [trainEnvironment, setTrainEnvironment] = useState("sim");
-  const [customTrainEnvironment, setCustomTrainEnvironment] = useState("");
-  const [rlOption, setRlOption] = useState("no");
 
   useEffect(() => {
     const ping = () => api.health().then(() => setOnline(true), () => setOnline(false));
@@ -164,13 +155,17 @@ export default function Console() {
               New run
             </button>
           )}
-          <span className={`link ${online === null ? "unknown" : online ? "up" : "down"}`}>
-            {online === null
-              ? "checking orchestrator"
-              : online
-                ? "orchestrator online"
-                : "orchestrator unreachable"}
-          </span>
+          {api.SIMULATED ? (
+            <span className="link sim">simulated demo · no orchestrator</span>
+          ) : (
+            <span className={`link ${online === null ? "unknown" : online ? "up" : "down"}`}>
+              {online === null
+                ? "checking orchestrator"
+                : online
+                  ? "orchestrator online"
+                  : "orchestrator unreachable"}
+            </span>
+          )}
         </div>
       </div>
 
@@ -300,31 +295,6 @@ export default function Console() {
             {...stageProps("train")}
           >
             <p className="hint">Behaviour cloning, gated at 60% sim success before anything ships.</p>
-            <label>
-              Training Environment (Robot/Rover)
-              <select value={trainEnvironment} onChange={(e) => setTrainEnvironment(e.target.value)}>
-                <option value="sim">Simulation (Sim)</option>
-                <option value="unitree_go">Unitree Go</option>
-                <option value="unitree_b2">Unitree B2</option>
-                <option value="boston_dynamics_spot">Boston Dynamics Spot</option>
-                <option value="clearpath_jackal">Clearpath Jackal</option>
-                <option value="agile_digit">Agile Robotics Digit</option>
-                <option value="other">Others...</option>
-              </select>
-            </label>
-            {trainEnvironment === "other" && (
-              <label>
-                Custom Robot/Rover
-                <input value={customTrainEnvironment} onChange={(e) => setCustomTrainEnvironment(e.target.value)} placeholder="Enter robot/rover name" />
-              </label>
-            )}
-            <label>
-              Reinforcement Learning Algorithm
-              <select value={rlOption} onChange={(e) => setRlOption(e.target.value)}>
-                <option value="no">No</option>
-                <option value="yes">Yes</option>
-              </select>
-            </label>
           </Stage>
 
           <Stage
@@ -333,7 +303,9 @@ export default function Console() {
                "null% ops" and let an unmeasured bundle read as a profiled one. */
             out={pipe.artifactId && [
               pipe.opCoverage == null ? "ops not profiled" : `${pipe.opCoverage}% ops`,
-              `${pipe.latency} ms ${pipe.latencySource === "host-cpu" ? "(host cpu)" : ""}`.trim(),
+              pipe.latency == null
+                ? "latency not measured"
+                : `${pipe.latency} ms ${pipe.latencySource === "host-cpu" ? "(host cpu)" : ""}`.trim(),
               pipe.backend,
             ].join(" · ")}
             action="Optimize" ready={Boolean(pipe.policyId)}
@@ -345,40 +317,6 @@ export default function Console() {
             })}
             {...stageProps("optimize")}
           >
-            <label>
-              On-device AI Model Source
-              <select value={aiModelSource} onChange={(e) => setAiModelSource(e.target.value)}>
-                <option value="qualcomm">Qualcomm Hub (Quantized)</option>
-                <option value="local">Other Local Models</option>
-              </select>
-            </label>
-            {aiModelSource === "qualcomm" ? (
-              <label>
-                Qualcomm Model
-                <select value={qualcommModel} onChange={(e) => setQualcommModel(e.target.value)}>
-                  <option value="Llama-3-8B-Chat-AWQ">Llama 3 8B Chat (AWQ)</option>
-                  <option value="Llama-2-7B-Chat-INT8">Llama 2 7B Chat (INT8)</option>
-                  <option value="Mistral-7B-v0.1-AWQ">Mistral 7B v0.1 (AWQ)</option>
-                  <option value="Qwen-1.5-4B-Chat-AWQ">Qwen 1.5 4B Chat (AWQ)</option>
-                  <option value="Stable-Diffusion-v1.5-INT8">Stable Diffusion v1.5 (INT8)</option>
-                  <option value="Whisper-Base-INT8">Whisper Base (INT8)</option>
-                  <option value="Baichuan-7B-AWQ">Baichuan 7B (AWQ)</option>
-                  <option value="YI-6B-AWQ">YI 6B (AWQ)</option>
-                </select>
-              </label>
-            ) : (
-              <label>
-                Local Model
-                <select value={localModel} onChange={(e) => setLocalModel(e.target.value)}>
-                  <option value="Gemma 2B">Gemma 2B</option>
-                  <option value="Gemma 7B">Gemma 7B</option>
-                  <option value="Phi-3-Mini">Phi-3-Mini</option>
-                  <option value="Phi-2">Phi-2</option>
-                  <option value="Llama-3-8B-Instruct">Llama-3-8B-Instruct</option>
-                  <option value="Mistral-7B-Instruct-v0.2">Mistral-7B-Instruct-v0.2</option>
-                </select>
-              </label>
-            )}
             <label>
               Target device
               <input value={device} onChange={(e) => setDevice(e.target.value)} />
@@ -405,21 +343,10 @@ export default function Console() {
             <label>
               Robot
               <select value={robotKind} onChange={(e) => setRobotKind(e.target.value)}>
-                <option value="sim">Simulation (Sim)</option>
-                <option value="unitree_go">Unitree Go</option>
-                <option value="unitree_b2">Unitree B2</option>
-                <option value="boston_dynamics_spot">Boston Dynamics Spot</option>
-                <option value="clearpath_jackal">Clearpath Jackal</option>
-                <option value="agile_digit">Agile Robotics Digit</option>
-                <option value="other">Others...</option>
+                <option value="sim">Simulated robot</option>
+                <option value="unoq">Arduino UNO Q (serial)</option>
               </select>
             </label>
-            {robotKind === "other" && (
-              <label>
-                Custom Robot/Rover
-                <input value={customRobotKind} onChange={(e) => setCustomRobotKind(e.target.value)} placeholder="Enter robot/rover name" />
-              </label>
-            )}
           </Stage>
 
           <Stage
@@ -449,7 +376,9 @@ export default function Console() {
           </div>
           <div className="panel">
             <h2>Jobs</h2>
-            <JobFeed />
+            {api.SIMULATED
+              ? <p className="hint">The live job stream needs an orchestrator.</p>
+              : <JobFeed />}
           </div>
           <div className="panel wide">
             <h2>Edge telemetry</h2>
