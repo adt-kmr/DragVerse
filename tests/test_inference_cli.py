@@ -254,3 +254,22 @@ def test_open_serial_warns_when_no_ready_arrives(monkeypatch, capsys):
     port = _fake_pyserial(monkeypatch, [])
     assert inference.open_serial("COM5", 115200, ready_timeout=0.05) is port
     assert "READY" in capsys.readouterr().err
+
+
+def test_compare_reports_worst_and_mean_difference_per_action():
+    from twin import compare_models
+
+    rng = np.random.default_rng(0)
+    observations = [compare_models.random_observation(rng) for _ in range(4)]
+    assert all(o.shape == (1, 14) for o in observations)
+    offsets = iter([0.0, 0.1, 0.0, 0.3])
+
+    def reference(_obs):
+        return np.array([0.5, 0.5])
+
+    def candidate(_obs):
+        return np.array([0.5 - next(offsets), 0.5])
+
+    result = compare_models.compare(reference, candidate, observations)
+    assert result == {"steer": {"max_abs_diff": 0.3, "mean_abs_diff": 0.1},
+                      "throttle": {"max_abs_diff": 0.0, "mean_abs_diff": 0.0}}

@@ -7,7 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `twin/compare_models.py`: compares `Buggy_fixed_qdq.onnx` with `Buggy.onnx` on the same
+  random observations, on the NPU or with `--cpu`. The CPU result is in
+  `benchmarks/path_a_accuracy_cpu.json`.
+
 ### Changed
+
+- `fix_for_qnn.py` moved to `twin/` and runs as `python -m twin.fix_for_qnn`.
+- README: states that the event ran `Buggy.onnx` and that the NPU numbers are for the
+  quantized `Buggy_fixed_qdq.onnx`; publishes the committed Path A measurements.
 
 - `twin/inference.py` (Path A) runs as committed: no device or serial I/O at import, a
   `--port`/`--no-serial`/`--profile`/`--log` CLI, and a JSON run record.
