@@ -158,7 +158,8 @@ produced them.
 | `Buggy.onnx`, deterministic action head, QNN, float | 14 of 14 layers on the NPU; p50 0.151 ms, p95 0.183 ms | [`Buggy-qnn_dlc-deterministic_continuous_actions.json`](benchmarks/Buggy-qnn_dlc-deterministic_continuous_actions.json) |
 | `Buggy_fixed_qdq.onnx`, QNN | 18 of 18 layers on the NPU; p50 0.155 ms, p95 0.293 ms. No CPU baseline: QNN's CPU backend cannot run this 16-bit graph | [`Buggy_fixed_qdq-qnn_dlc.json`](benchmarks/Buggy_fixed_qdq-qnn_dlc.json) |
 
-Each file links to its AI Hub compile and profile jobs.
+Each file links to its AI Hub compile and profile jobs. The job page for the action-head run
+is in [`docs/evidence/aihub_profile_buggy.png`](docs/evidence/aihub_profile_buggy.png).
 
 - **The NPU does not make this policy faster.** The network is so small that ONNX Runtime
   on the CPU beats the NPU (0.019 ms against 0.066 ms, same device). The action-head file
