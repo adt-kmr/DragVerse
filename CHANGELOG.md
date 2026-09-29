@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `training/unity/`: the Unity agent script, wheel controller and ML-Agents trainer
+  configuration behind `twin/Buggy.onnx`. Its training logs were not kept.
 - `twin/compare_models.py`: compares `Buggy_fixed_qdq.onnx` with `Buggy.onnx` on the same
   random observations, on the NPU or with `--cpu`. The CPU result is in
   `benchmarks/path_a_accuracy_cpu.json`.
