@@ -88,15 +88,17 @@ action fed back. The script used at the event passed zeros for the previous acti
 #### The NPU model
 
 At the event, `inference.py` ran `Buggy.onnx` unmodified, and which execution provider ran
-each node was not recorded. That model does not run on the HTP as exported: its Gemm,
-Sigmoid and Mul nodes are float, which the HTP backend leaves to the CPU, and its dynamic
-batch dimensions make QNN graph finalization fail once it is quantized.
+each node was not recorded. On the AI PC, that export did not run on the HTP through ONNX
+Runtime's QNN execution provider: its dynamic batch dimension made QNN graph finalization
+fail once it was quantized, and as a float graph its nodes stayed on the CPU (those local
+runs were not saved to a file). With the batch fixed to 1, the same float model compiles on
+Qualcomm AI Hub and runs on the NPU; see [Measured results](#measured-results).
 
 `twin/Buggy_fixed_qdq.onnx` is the build that does run there, and `inference.py` now uses it
 by default. `python -m twin.fix_for_qnn` regenerates it from `Buggy.onnx`: it keeps only the
 deterministic action output, fixes every dimension to batch 1, upgrades the opset from 9 to
 13, rewrites Gemm as MatMul and Add, and quantizes to QDQ with ONNX Runtime's QNN
-configuration. It is a different file from the one Unity exported, so every result records
+configuration (uint16 activations, uint8 weights; the quantizer raises the opset to 21). It is a different file from the one Unity exported, so every result records
 `model_file` and `model_sha256`.
 
 Calibration uses 200 synthetic observations drawn from assumed ranges, not recorded driving
@@ -148,8 +150,29 @@ produced them.
 | Quantized vs original, 500 observations, both on CPU | Largest difference: steer 0.019, throttle 0.035 | [`path_a_accuracy_cpu.json`](benchmarks/path_a_accuracy_cpu.json) |
 | Test machine | Snapdragon X2 Elite (X2E88100), ONNX Runtime 1.30.0, onnxruntime-qnn 2.6.0 | [`session.json`](benchmarks/session.json) |
 
-Not measured yet: the same comparison with the quantized model on the NPU, a run driving
-the buggy over serial, and AI Hub profiling of `Buggy.onnx`.
+### Qualcomm AI Hub, Snapdragon X Elite (cloud device)
+
+| Model and target | Result | Source |
+|---|---|---|
+| `Buggy.onnx`, full graph, ONNX Runtime, float | 30 of 31 layers on the NPU; only the `Multinomial` sampling layer on the CPU. NPU p50 0.066 ms; the same binary on the CPU p50 0.019 ms | [`Buggy-onnx.json`](benchmarks/Buggy-onnx.json) |
+| `Buggy.onnx`, deterministic action head, QNN, float | 14 of 14 layers on the NPU; p50 0.151 ms, p95 0.183 ms | [`Buggy-qnn_dlc-deterministic_continuous_actions.json`](benchmarks/Buggy-qnn_dlc-deterministic_continuous_actions.json) |
+| `Buggy_fixed_qdq.onnx`, QNN | 18 of 18 layers on the NPU; p50 0.155 ms, p95 0.293 ms. No CPU baseline: QNN's CPU backend cannot run this 16-bit graph | [`Buggy_fixed_qdq-qnn_dlc.json`](benchmarks/Buggy_fixed_qdq-qnn_dlc.json) |
+
+Each file links to its AI Hub compile and profile jobs. The job page for the action-head run
+is in [`docs/evidence/aihub_profile_buggy.png`](docs/evidence/aihub_profile_buggy.png).
+
+- **The NPU does not make this policy faster.** The network is so small that ONNX Runtime
+  on the CPU beats the NPU (0.019 ms against 0.066 ms, same device). The action-head file
+  also reports a 12.4× speedup, but that baseline is QNN's reference CPU backend, not an
+  optimized CPU runtime.
+- **AI Hub and the AI PC are measured differently:** a different chip (X Elite against X2
+  Elite) and AI Hub's profiler against a local timing loop. Quote each number with its source.
+- **AI Hub rejects the Microsoft-domain quantize and dequantize ops** that ONNX Runtime
+  writes for 16-bit activations. `profile_models` uploads a copy using the standard opset 21
+  ops (outputs identical), and the record keeps the SHA-256 of the file the AI PC runs.
+
+Not measured yet: the quantized model's accuracy on the NPU, and a run driving the buggy
+over serial.
 
 `python -m deployment.aihub_export.profile_models` writes AI Hub device-cloud profiles to
 `benchmarks/`, and the orchestrator serves them at `GET /benchmarks`.
@@ -213,6 +236,7 @@ tests/            pytest suite
 - Path A: `Buggy.onnx` drove the physical buggy at the event
 - Path A training sources: Unity agent script and ML-Agents trainer configuration
 - Path A NPU build: one QNN kernel on the Hexagon NPU, latency and CPU accuracy measured
+- Qualcomm AI Hub compile and profile of `Buggy.onnx` and the NPU build on Snapdragon X Elite
 - Path B validated in simulation
 
 ### In progress
@@ -221,7 +245,6 @@ tests/            pytest suite
 - Calibration of the NPU build from recorded Unity observations
 - FunctionGemma 270M task planning on the Hexagon NPU
 - Whisper speech-to-text on the Hexagon NPU
-- AI Hub compile and profile of `Buggy.onnx` on Snapdragon X Elite
 - Dashboard connected to the live orchestrator, with a clearly labelled replay for the
   public demo
 
