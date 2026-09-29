@@ -1,0 +1,11 @@
+{
+    "soc":  "Snapdragon(R) X2 Elite - X2E88100 - Qualcomm Oryon(TM) CPU",
+    "npu":  "Snapdragon(R) X2 Elite - X2E88100 - Qualcomm(R) Hexagon(TM) NPU",
+    "npu_driver":  "30.0.220.11010",
+    "windows":  "Microsoft Windows 11 Home Single Language build 28000",
+    "python":  "3.12.10 ARM64",
+    "onnxruntime":  "1.30.0",
+    "onnxruntime_qnn":  "2.6.0",
+    "git_commit":  "a4f63b4f6147f1bacc12591ed16d49e72fc22589",
+    "recorded_utc":  "2026-09-29T10:34:49Z"
+}
