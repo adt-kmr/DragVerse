@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Qualcomm AI Hub results on Snapdragon X Elite for `Buggy.onnx` (full graph and action
+  head) and `Buggy_fixed_qdq.onnx`, in `benchmarks/`.
 - `training/unity/`: the Unity agent script, wheel controller and ML-Agents trainer
   configuration behind `twin/Buggy.onnx`. Its training logs were not kept.
 - `twin/compare_models.py`: compares `Buggy_fixed_qdq.onnx` with `Buggy.onnx` on the same
@@ -21,6 +23,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `DASHBOARD_MODE=simulated`) use the replay in `dashboard/src/sim.js`, which the console
   labels "simulated demo" and which reports no latency or NPU figures. UI copy now matches
   the README, and the model and robot pickers with no backend behind them are removed.
+- AI Hub profiling (`deployment/aihub_export/profile_models.py`):
+  - failed compile and profile jobs are recorded with AI Hub's reason, not as empty or
+    crashing results;
+  - QDQ models are labelled quantized;
+  - extracted subgraphs no longer repeat their inputs and outputs in `value_info`;
+  - Microsoft-domain Q/DQ ops are rewritten as standard ONNX ops before upload;
+  - records carry the source model's SHA-256.
 - `fix_for_qnn.py` moved to `twin/` and runs as `python -m twin.fix_for_qnn`.
 - README: states that the event ran `Buggy.onnx` and that the NPU numbers are for the
   quantized `Buggy_fixed_qdq.onnx`; publishes the committed Path A measurements.

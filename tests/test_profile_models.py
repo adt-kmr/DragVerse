@@ -130,14 +130,18 @@ def test_extraction_drops_the_sampling_head(tmp_path):
     assert not {n.op_type for n in model.graph.node} & {"RandomNormalLike", "Multinomial"}
     assert [i.name for i in model.graph.input] == ["obs_0"]   # action_masks is unused
     assert [o.name for o in model.graph.output] == [DET]
+    # AI Hub rejects a graph that repeats its inputs or outputs in value_info.
+    assert not {v.name for v in model.graph.value_info} & {"obs_0", DET}
 
 
 class FakeHub:
     """Records what would be submitted to AI Hub and returns a one-layer NPU profile."""
 
-    def __init__(self):
+    def __init__(self, compile_error=None, cpu_profile_error=None):
         self.compiles = []
         self.profiles = []
+        self.compile_error = compile_error
+        self.cpu_profile_error = cpu_profile_error
 
     def get_devices(self):
         return [SimpleNamespace(name="Snapdragon X Elite CRD")]
@@ -145,16 +149,23 @@ class FakeHub:
     def submit_compile_job(self, model, device, options, input_specs=None):
         import onnx
         # Inspect now: the extracted file lives in a temp dir that is gone afterwards.
-        ops = {n.op_type for n in onnx.load(model).graph.node}
-        self.compiles.append({"options": options, "ops": ops, "input_specs": input_specs})
-        return SimpleNamespace(get_target_model=lambda: object(), url="https://hub/c/1")
+        nodes = onnx.load(model).graph.node
+        self.compiles.append({"options": options, "ops": {n.op_type for n in nodes},
+                              "domains": {n.domain for n in nodes},
+                              "input_specs": input_specs})
+        status = SimpleNamespace(success=self.compile_error is None, message=self.compile_error)
+        return SimpleNamespace(wait=lambda: status, get_target_model=lambda: object(),
+                               url="https://hub/c/1")
 
     def submit_profile_job(self, model, device, options=None):
         self.profiles.append(options)
         profile = {"execution_summary": {"estimated_inference_time": 100},
                    "execution_detail": [{"name": "g", "type": "Gemm",
                                          "compute_unit": "NPU", "execution_time": 100}]}
-        return SimpleNamespace(download_profile=lambda: profile, url="https://hub/p/1")
+        error = self.cpu_profile_error if options else None
+        status = SimpleNamespace(success=error is None, message=error)
+        return SimpleNamespace(wait=lambda: status, download_profile=lambda: profile,
+                               url="https://hub/p/1")
 
 
 def test_onnx_mode_compiles_float_and_labels_it(monkeypatch):
@@ -193,6 +204,53 @@ def test_full_model_is_submitted_unmodified(monkeypatch):
         "obs_0": ((1, 14), "float32"), "action_masks": ((1, 1), "float32")}
     assert record["model"] == "Buggy-onnx"
     assert record["extracted_output"] is None
+
+
+def test_qdq_model_is_labelled_quantized(monkeypatch):
+    pytest.importorskip("onnx")
+    hub = FakeHub()
+    monkeypatch.setattr(pm, "_require_hub", lambda: hub)
+    qdq = os.path.join(os.path.dirname(BUGGY), "Buggy_fixed_qdq.onnx")
+    record = pm.profile_onnx(qdq, "X Elite", target_runtime="qnn_dlc")
+    assert record["model"] == "Buggy_fixed_qdq-qnn_dlc"
+    assert record["npu"]["precision"] == "qdq"
+    assert record["npu"]["quantized"] is True
+    # AI Hub rejects com.microsoft Q/DQ; the upload carries the standard ops instead,
+    # and the record still names the file the AI PC ran.
+    assert hub.compiles[0]["domains"] == {""}
+    assert record["qdq_contrib_ops_converted"] is True
+    assert record["source_model"] == "Buggy_fixed_qdq.onnx"
+    assert record["source_model_sha256"].startswith("f9cc946d")
+
+
+def test_float_model_is_uploaded_unconverted(monkeypatch):
+    pytest.importorskip("onnx")
+    hub = FakeHub()
+    monkeypatch.setattr(pm, "_require_hub", lambda: hub)
+    record = pm.profile_onnx(BUGGY, "X Elite", target_runtime="onnx")
+    assert record["qdq_contrib_ops_converted"] is False
+
+
+def test_failed_compile_is_recorded_and_never_profiled(monkeypatch):
+    pytest.importorskip("onnx")
+    hub = FakeHub(compile_error="Layer 'DequantizeLinear' is not supported")
+    monkeypatch.setattr(pm, "_require_hub", lambda: hub)
+    record = pm.profile_onnx(BUGGY, "X Elite", target_runtime="qnn_dlc", compare=True)
+    assert hub.profiles == []
+    assert record["npu"]["error"] == "compile failed: Layer 'DequantizeLinear' is not supported"
+    assert record["npu"]["compile_job_url"] == "https://hub/c/1"
+    assert "cpu" not in record
+
+
+def test_failed_cpu_profile_is_recorded_as_failed(monkeypatch):
+    pytest.importorskip("onnx")
+    hub = FakeHub(cpu_profile_error="MODEL_GRAPH_ERROR")
+    monkeypatch.setattr(pm, "_require_hub", lambda: hub)
+    record = pm.profile_onnx(BUGGY, "X Elite", target_runtime="qnn_dlc", compare=True)
+    assert record["npu"]["op_coverage_pct"] == 100.0
+    assert record["cpu"]["error"] == "profile failed: MODEL_GRAPH_ERROR"
+    assert record["cpu"]["profile_job_url"] == "https://hub/p/1"
+    assert "speedup_vs_cpu" not in record
 
 
 def test_unknown_output_fails_before_any_hub_job(monkeypatch):

@@ -163,6 +163,18 @@ def _summarize_profile(profile: dict) -> dict:
     }
 
 
+def _profile_result(job) -> dict:
+    """Measured numbers from a profile job, or AI Hub's reason when it failed.
+
+    A failed job still downloads as an empty profile, which would read as "not measured"
+    rather than "failed", so check the status first.
+    """
+    status = job.wait()
+    if not status.success:
+        return {"error": f"profile failed: {status.message}"}
+    return _summarize_profile(job.download_profile())
+
+
 def profile_model(model, device_name: str, target_runtime: str = DEFAULT_RUNTIME,
                   input_specs: dict | None = None, compare_cpu: bool = False) -> dict:
     """Compile once at float, then profile on real hardware. Returns measured numbers.
@@ -183,14 +195,18 @@ def profile_model(model, device_name: str, target_runtime: str = DEFAULT_RUNTIME
     compile_job = hub.submit_compile_job(
         model=model, device=device, options=options, input_specs=input_specs,
     )
-    target_model = compile_job.get_target_model()
+    # get_target_model() can hand back a model whose compile failed; profiling it then
+    # fails too, so check the compile status and keep AI Hub's reason in the record.
+    status = compile_job.wait()
+    target_model = compile_job.get_target_model() if status.success else None
     if target_model is None:
-        return {"device": device.name, "runtime": target_runtime, "error": "compile failed",
+        return {"device": device.name, "runtime": target_runtime,
+                "error": f"compile failed: {status.message}",
                 "compile_job_url": compile_job.url}
 
     print("  profiling on real hardware ...")
     profile_job = hub.submit_profile_job(model=target_model, device=device)
-    result = _summarize_profile(profile_job.download_profile())
+    result = _profile_result(profile_job)
     result.update({
         "device": device.name,
         "runtime": target_runtime,
@@ -205,7 +221,7 @@ def profile_model(model, device_name: str, target_runtime: str = DEFAULT_RUNTIME
         print("  CPU baseline on the same binary ...")
         cpu_job = hub.submit_profile_job(model=target_model, device=device,
                                          options="--compute_unit cpu")
-        cpu = _summarize_profile(cpu_job.download_profile())
+        cpu = _profile_result(cpu_job)
         cpu.update({"device": device.name, "runtime": target_runtime, "compute_unit": "cpu",
                     "profile_job_url": cpu_job.url})
         result["cpu_baseline"] = cpu
@@ -241,6 +257,12 @@ def extract_subgraph(onnx_path: str, output: str, out_path: str) -> str:
     probe = extractor.extract_model(inputs, [output])
     used = {name for node in probe.graph.node for name in node.input}
     sub = extractor.extract_model([i for i in inputs if i in used], [output])
+    # The extractor keeps shape entries for the tensors that became graph inputs and
+    # outputs. The ONNX IR forbids that, and AI Hub rejects the model for it.
+    io = {v.name for v in [*sub.graph.input, *sub.graph.output]}
+    keep = [v for v in sub.graph.value_info if v.name not in io]
+    del sub.graph.value_info[:]
+    sub.graph.value_info.extend(keep)
     onnx.checker.check_model(sub)
     onnx.save(sub, out_path)
     return out_path
@@ -267,6 +289,50 @@ def static_input_specs(onnx_path: str) -> dict:
     return specs
 
 
+def standardize_qdq(onnx_path: str, out_path: str) -> bool:
+    """Rewrite com.microsoft QuantizeLinear/DequantizeLinear as the standard ONNX ops.
+
+    ONNX Runtime's QNN quantizer writes the com.microsoft versions for 16-bit activations,
+    and AI Hub rejects that domain. From opset 21 the standard ops take the same uint16 or
+    uint8 per-tensor scale and zero point, so only the domain changes and the outputs are
+    identical. Returns False, writing nothing, when there is nothing to convert.
+    """
+    import onnx
+
+    model = onnx.load(onnx_path)
+    contrib = [n for n in model.graph.node
+               if n.domain == "com.microsoft" and n.op_type in ("QuantizeLinear",
+                                                                "DequantizeLinear")]
+    if not contrib:
+        return False
+    opset = next(o.version for o in model.opset_import if o.domain in ("", "ai.onnx"))
+    if opset < 21:
+        raise ValueError(f"{onnx_path} is opset {opset}; standard 16-bit QDQ needs opset 21")
+    for node in contrib:
+        node.domain = ""
+    if not any(n.domain == "com.microsoft" for n in model.graph.node):
+        keep = [o for o in model.opset_import if o.domain != "com.microsoft"]
+        del model.opset_import[:]
+        model.opset_import.extend(keep)
+    onnx.checker.check_model(model, full_check=True)
+    onnx.save(model, out_path)
+    return True
+
+
+def _is_qdq(onnx_path: str) -> bool:
+    """True for a model quantized ahead of time with QuantizeLinear/DequantizeLinear pairs."""
+    import onnx
+
+    return any(n.op_type == "QuantizeLinear" for n in onnx.load(onnx_path).graph.node)
+
+
+def _sha256(path: str) -> str:
+    import hashlib
+
+    with open(path, "rb") as f:
+        return hashlib.sha256(f.read()).hexdigest()
+
+
 def _meets_gate(npu: dict) -> bool:
     # Blueprint section 14 gate: below this, the model needs a GPU fallback path.
     cov = npu.get("op_coverage_pct")
@@ -284,14 +350,23 @@ def profile_onnx(onnx_path: str, device_name: str, target_runtime: str = DEFAULT
         if extract_output:
             model_path = extract_subgraph(onnx_path, extract_output,
                                           os.path.join(tmp, f"{stem}.onnx"))
+        converted = standardize_qdq(model_path, os.path.join(tmp, f"{stem}_std.onnx"))
+        if converted:
+            model_path = os.path.join(tmp, f"{stem}_std.onnx")
         specs = static_input_specs(model_path)
+        qdq = _is_qdq(model_path)
         npu = profile_model(model_path, device_name, target_runtime, input_specs=specs,
                             compare_cpu=compare)
+    if qdq:
+        # The compiler keeps the model's own QDQ quantization, so "float" would mislabel it.
+        npu.update(precision="qdq", quantized=True)
 
     record: typing.Dict[str, typing.Any] = {
         "model": name,
         "source_model": os.path.basename(onnx_path),
+        "source_model_sha256": _sha256(onnx_path),
         "extracted_output": extract_output,
+        "qdq_contrib_ops_converted": converted,
         "input_specs": {k: [list(shape), dtype] for k, (shape, dtype) in specs.items()},
         "npu": npu,
     }
@@ -400,7 +475,7 @@ def benchmark(slug: str, device_name: str, compare: bool = False,
     for name, part in components.items():
         if part.profile_job is None:
             continue
-        summary = _summarize_profile(part.profile_job.download_profile())
+        summary = _profile_result(part.profile_job)
         summary.update({"device": device.name, "runtime": "qnn_dlc", "precision": "int8",
                         "profile_job_url": part.profile_job.url,
                         "quantized": part.quantize_job is not None})
@@ -427,7 +502,7 @@ def benchmark(slug: str, device_name: str, compare: bool = False,
             print("  CPU baseline on the same binary ...")
             cpu_job = hub.submit_profile_job(model=target_model, device=device,
                                              options="--compute_unit cpu")
-            cpu = _summarize_profile(cpu_job.download_profile())
+            cpu = _profile_result(cpu_job)
             cpu.update({"device": device.name, "compute_unit": "cpu",
                         "profile_job_url": cpu_job.url})
             record["cpu"] = cpu

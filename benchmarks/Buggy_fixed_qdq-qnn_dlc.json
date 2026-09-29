@@ -1,0 +1,48 @@
+{
+  "model": "Buggy_fixed_qdq-qnn_dlc",
+  "source_model": "Buggy_fixed_qdq.onnx",
+  "source_model_sha256": "f9cc946d15b7310c075250a6b4d92c233e0657fe32f72954d6a1377db5abb3fe",
+  "extracted_output": null,
+  "qdq_contrib_ops_converted": true,
+  "input_specs": {
+    "obs_0": [
+      [
+        1,
+        14
+      ],
+      "float32"
+    ]
+  },
+  "npu": {
+    "op_coverage_pct": 100.0,
+    "time_on_npu_pct": null,
+    "layers_total": 18,
+    "layers_on_npu": 18,
+    "fallback_units": [],
+    "top_fallback_layers": [],
+    "latency_ms": 0.147,
+    "peak_memory_bytes": 14757888,
+    "first_load_time_ms": 517.01,
+    "latency_source": "ai-hub-device-cloud",
+    "runs": 100,
+    "latency_p50_ms": 0.155,
+    "latency_p95_ms": 0.293,
+    "latency_p99_ms": 0.413,
+    "latency_mean_ms": 0.1831,
+    "device": "Snapdragon X Elite CRD",
+    "runtime": "qnn_dlc",
+    "precision": "qdq",
+    "quantized": true,
+    "compile_options": "--target_runtime qnn_dlc",
+    "compile_job_url": "https://workbench.aihub.qualcomm.com/jobs/jgk21qnog/",
+    "profile_job_url": "https://workbench.aihub.qualcomm.com/jobs/j5wlkqe6p/"
+  },
+  "cpu": {
+    "error": "profile failed: Failed to profile the model: Failed to call QnnModel_composeGraphsFromDlc: MODEL_GRAPH_ERROR.",
+    "device": "Snapdragon X Elite CRD",
+    "runtime": "qnn_dlc",
+    "compute_unit": "cpu",
+    "profile_job_url": "https://workbench.aihub.qualcomm.com/jobs/jp4y7vw8p/"
+  },
+  "meets_80pct_npu_gate": true
+}
