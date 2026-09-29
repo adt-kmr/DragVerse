@@ -18,19 +18,17 @@ This script:
   8. Attempts QNN HTP session creation and inference
 
 Usage:
-    .venv\\Scripts\\python.exe fix_for_qnn.py
+    python -m twin.fix_for_qnn
 """
 import argparse
-import copy
-import sys
 from pathlib import Path
 
 import numpy as np
 import onnx
-from onnx import TensorProto, helper, numpy_helper, shape_inference
+from onnx import helper, numpy_helper, shape_inference
 
-sys.path.insert(0, str(Path(__file__).parent / "twin"))
-from inference import build_observation
+from twin.compare_models import random_observation
+from twin.inference import build_observation
 
 
 # ---------------------------------------------------------------------------
@@ -78,8 +76,8 @@ def fix_dynamic_shapes(model_path: Path, output_path: Path):
     # Verify no dynamic dims remain
     dynamic_remaining = []
     for collection_name, collection in [("inputs", m.graph.input),
-                                         ("outputs", m.graph.output),
-                                         ("value_info", m.graph.value_info)]:
+                                        ("outputs", m.graph.output),
+                                        ("value_info", m.graph.value_info)]:
         for vi in collection:
             if vi.type.HasField("tensor_type") and vi.type.tensor_type.HasField("shape"):
                 for d in vi.type.tensor_type.shape.dim:
@@ -123,7 +121,7 @@ def decompose_gemm(model_path: Path, output_path: Path):
     QNN HTP handles MatMul + Add more reliably than Gemm across SDK versions.
     Only handles the common case: alpha=1, beta=1, transA=0, transB=1 (or 0).
     """
-    print(f"[4/8] Decomposing Gemm → MatMul + Add ...")
+    print("[4/8] Decomposing Gemm → MatMul + Add ...")
     m = onnx.load(str(model_path))
     new_nodes = []
     replaced = 0
@@ -201,13 +199,13 @@ def decompose_gemm(model_path: Path, output_path: Path):
 # ---------------------------------------------------------------------------
 def qnn_preprocess(model_path: Path, output_path: Path):
     """Run QNN-specific preprocessing (e.g., fold batch norms, etc.)."""
-    print(f"[5/8] QNN pre-processing ...")
+    print("[5/8] QNN pre-processing ...")
     from onnxruntime.quantization.execution_providers.qnn import qnn_preprocess_model
     changed = qnn_preprocess_model(str(model_path), str(output_path))
     if changed:
         print(f"      Pre-processing made changes → {output_path.name}")
     else:
-        print(f"      No changes needed; using original")
+        print("      No changes needed; using original")
         # Copy unchanged
         import shutil
         shutil.copy2(model_path, output_path)
@@ -232,16 +230,7 @@ def quantize_model(model_path: Path, output_path: Path, n_samples: int = 200):
             rng = np.random.default_rng(42)
             self._samples = []
             for _ in range(n):
-                obs = build_observation(
-                    swivel_angle_rad=rng.uniform(-np.pi, np.pi),
-                    prev_steer=rng.uniform(-1, 1), prev_throttle=rng.uniform(-1, 1),
-                    local_target_pos=(rng.uniform(-10, 10), rng.uniform(-2, 2), rng.uniform(0, 15)),
-                    forward_dot=rng.uniform(-1, 1), right_dot=rng.uniform(-1, 1),
-                    distance_to_target=rng.uniform(0, 20),
-                    local_velocity=(rng.uniform(-5, 5), rng.uniform(-1, 1), rng.uniform(-5, 5)),
-                    curriculum_progress=rng.uniform(0, 1),
-                ).astype(np.float32)
-                self._samples.append({inp.name: obs})
+                self._samples.append({inp.name: random_observation(rng)})
             self._iter = None
 
         def get_next(self):
@@ -278,7 +267,7 @@ def quantize_model(model_path: Path, output_path: Path, n_samples: int = 200):
                         print(f"  ⚠ DYNAMIC dim in quantized model: {vi.name}")
 
     if not any_dynamic:
-        print(f"      Quantized model passes onnx.checker, all shapes static ✓")
+        print("      Quantized model passes onnx.checker, all shapes static ✓")
         print(f"      Opset: {m.opset_import[0].version}, Nodes: {len(m.graph.node)}")
     return output_path
 
@@ -451,7 +440,7 @@ def test_qnn_cpu_backend(model_path: Path):
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--model", type=Path, default=Path("twin/Buggy.onnx"))
+    ap.add_argument("--model", type=Path, default=Path(__file__).with_name("Buggy.onnx"))
     ap.add_argument("--skip-qnn", action="store_true",
                     help="Stop after CPU validation (useful for running on x64)")
     args = ap.parse_args()
@@ -487,18 +476,18 @@ def main():
                 print(f"\n{'='*60}")
                 print(f"SUCCESS! Model ready for QNN HTP: {final_qdq}")
                 print(f"{'='*60}")
-                print(f"\nTo use in inference.py:")
-                print(f"  .venv\\Scripts\\python.exe twin/inference.py "
+                print("\nTo use in inference.py:")
+                print(f"  python twin/inference.py "
                       f"--model {final_qdq} --no-serial --iterations 200 --profile")
             else:
                 print(f"\n{'='*60}")
-                print(f"QNN HTP session failed. See diagnostics above.")
+                print("QNN HTP session failed. See diagnostics above.")
                 print(f"The fixed QDQ model is at: {final_qdq}")
-                print(f"It runs correctly on CPU — the issue is QNN-specific.")
+                print("It runs correctly on CPU — the issue is QNN-specific.")
                 print(f"{'='*60}")
         else:
             print(f"\n{'='*60}")
-            print(f"CPU validation complete. QNN test skipped (--skip-qnn).")
+            print("CPU validation complete. QNN test skipped (--skip-qnn).")
             print(f"Fixed QDQ model: {final_qdq}")
             print(f"{'='*60}")
 

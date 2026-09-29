@@ -32,8 +32,8 @@ measurement file that produced it.
 
 There are two parts:
 
-1. **Path A**: the policy that drove the physical buggy at the event. A Unity ML-Agents
-   PPO policy running on the Hexagon NPU of a Snapdragon X2 Elite AI PC.
+1. **Path A**: the Unity ML-Agents PPO policy that drove the physical buggy at the event,
+   and a quantized build of it that runs on the Hexagon NPU of a Snapdragon X2 Elite AI PC.
 2. **The pipeline**: one FastAPI orchestrator and a Python SDK that take a scan through
    reconstruction, labelling, twin generation, task planning, policy training, export and
    deployment. Its robot policy is Path B.
@@ -42,13 +42,13 @@ There are two parts:
 
 |  | Path A | Path B |
 |---|---|---|
-| Policy | Unity ML-Agents PPO (`twin/Buggy.onnx`) | Behaviour-cloned linear policy (`policy/finetune/train_bc.py`) |
+| Policy | Unity ML-Agents PPO: `twin/Buggy.onnx`, and its NPU build `twin/Buggy_fixed_qdq.onnx` | Behaviour-cloned linear policy (`policy/finetune/train_bc.py`) |
 | Inputs | 14 | 2 |
-| Precision | float32 ONNX; the QNN execution provider runs float models at FP16 on the HTP by default (`enable_htp_fp16_precision`) | int8 via `LinearPolicy.quantize_int8` |
+| Precision | QDQ: uint16 activations, uint8 weights | int8 via `LinearPolicy.quantize_int8` |
 | Runtime | ONNX Runtime + QNN execution provider | numpy |
 | Compute unit | Hexagon NPU, Snapdragon X2 Elite AI PC | CPU |
 | Actuation | Plain Arduino over serial (`twin/buggy_motor_controller.ino`) | `SimRobot`; `UnoQRobot` serial adapter |
-| Status | Ran at the event | Designed for the UNO Q CPU; validated in simulation on the host |
+| Status | `Buggy.onnx` drove the buggy at the event; the NPU build is measured on the AI PC, not yet driven on the buggy | Designed for the UNO Q CPU; validated in simulation on the host |
 
 Path A and Path B are separate policies. Path B does not run on an NPU.
 
@@ -59,7 +59,7 @@ continuous actions (steer and throttle). It was trained in Unity outside this re
 the agent script, trainer configuration and training logs are being added (see
 [Roadmap](#roadmap)).
 
-`twin/inference.py` runs it through ONNX Runtime with the QNN execution provider and sends
+`twin/inference.py` runs the policy through ONNX Runtime with the QNN execution provider and sends
 each action to an Arduino running `twin/buggy_motor_controller.ino` over serial
 (`<steer>,<throttle>\n` at 115200 baud). The Arduino drives the steering servo and the
 ESC, and returns both to neutral if no command arrives for 500 ms.
@@ -83,6 +83,25 @@ each command with a line of its own and an unpaced stream overruns its receive b
 The script feeds a fixed demo observation (target 5 m straight ahead) with the previous
 action fed back. The script used at the event passed zeros for the previous action.
 `build_observation` documents the order of the 14 values.
+
+#### The NPU model
+
+At the event, `inference.py` ran `Buggy.onnx` unmodified, and which execution provider ran
+each node was not recorded. That model does not run on the HTP as exported: its Gemm,
+Sigmoid and Mul nodes are float, which the HTP backend leaves to the CPU, and its dynamic
+batch dimensions make QNN graph finalization fail once it is quantized.
+
+`twin/Buggy_fixed_qdq.onnx` is the build that does run there, and `inference.py` now uses it
+by default. `python -m twin.fix_for_qnn` regenerates it from `Buggy.onnx`: it keeps only the
+deterministic action output, fixes every dimension to batch 1, upgrades the opset from 9 to
+13, rewrites Gemm as MatMul and Add, and quantizes to QDQ with ONNX Runtime's QNN
+configuration. It is a different file from the one Unity exported, so every result records
+`model_file` and `model_sha256`.
+
+Calibration uses 200 synthetic observations drawn from assumed ranges, not recorded driving
+data. `python -m twin.compare_models` runs both models on 500 further observations from the
+same ranges and reports the largest difference in steer and throttle; add `--cpu` to run the
+quantized model on the CPU on any machine.
 
 ### Path B: pipeline policy on the robot CPU
 
@@ -119,8 +138,17 @@ Arduino sketch goes neutral after 500 ms without a command.
 ## Measured results
 
 Numbers are published here only with a link to the committed JSON in `benchmarks/` that
-produced them. None are published yet: AI Hub profiling of `Buggy.onnx` and the on-device
-Path A run log are in progress.
+produced them.
+
+| Measurement | Result | Source |
+|---|---|---|
+| `Buggy_fixed_qdq.onnx` latency, AI PC NPU, 1,000 runs, `session.run` only | p50 0.034 ms, p95 0.047 ms, max 4.73 ms | [`path_a_local.json`](benchmarks/path_a_local.json) |
+| Where the graph runs, AI PC | One QNN kernel; only the input QuantizeLinear and output DequantizeLinear run on the CPU | [`path_a_profile.json`](benchmarks/path_a_profile.json) |
+| Quantized vs original, 500 observations, both on CPU | Largest difference: steer 0.019, throttle 0.035 | [`path_a_accuracy_cpu.json`](benchmarks/path_a_accuracy_cpu.json) |
+| Test machine | Snapdragon X2 Elite (X2E88100), ONNX Runtime 1.30.0, onnxruntime-qnn 2.6.0 | [`session.json`](benchmarks/session.json) |
+
+Not measured yet: the same comparison with the quantized model on the NPU, a run driving
+the buggy over serial, and AI Hub profiling of `Buggy.onnx`.
 
 `python -m deployment.aihub_export.profile_models` writes AI Hub device-cloud profiles to
 `benchmarks/`, and the orchestrator serves them at `GET /benchmarks`.
@@ -160,7 +188,7 @@ Environment variables (copy `.env.example` to `.env`):
 capture/          Capture service, Scaniverse import, Android capture app
 reconstruction/   Fast (fusion) and fidelity (COLMAP) reconstruction
 semantic/         Point-cloud labelling and the label ontology
-twin/             Twin generator, and Path A: Buggy.onnx, inference.py, Arduino sketch
+twin/             Twin generator, and Path A: models, inference.py, NPU build and comparison scripts, Arduino sketch
 sarvam/           Task planners: Sarvam (online) and keyword (offline)
 policy/           Path B behaviour cloning and simulation evaluation
 deployment/       int8 export, AI Hub export and profiling, QAIRT conversion
@@ -180,11 +208,14 @@ tests/            pytest suite
 
 - Pipeline from capture to deployment behind one REST API and SDK, tested end to end
   in-process
-- Path A on the Hexagon NPU, driving the physical buggy at the event
+- Path A: `Buggy.onnx` drove the physical buggy at the event
+- Path A NPU build: one QNN kernel on the Hexagon NPU, latency and CPU accuracy measured
 - Path B validated in simulation
 
 ### In progress
 
+- Path A NPU build driving the buggy over serial, and its accuracy measured on the NPU
+- Calibration of the NPU build from recorded Unity observations
 - FunctionGemma 270M task planning on the Hexagon NPU
 - Whisper speech-to-text on the Hexagon NPU
 - AI Hub compile and profile of `Buggy.onnx` on Snapdragon X Elite
