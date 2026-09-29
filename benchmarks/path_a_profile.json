@@ -3,10 +3,10 @@
   "model_sha256": "f9cc946d15b7310c075250a6b4d92c233e0657fe32f72954d6a1377db5abb3fe",
   "iterations": 200,
   "latency_ms": {
-    "p50": 0.0907,
-    "p95": 0.1162,
-    "max": 7.0032,
-    "mean": 0.1317
+    "p50": 0.0912,
+    "p95": 0.1254,
+    "max": 4.0719,
+    "mean": 0.1191
   },
   "nodes": {
     "kernels_by_provider": {
@@ -29,6 +29,6 @@
   "serial_port": null,
   "rate_hz": null,
   "profiled": true,
-  "timestamp": "2026-09-29T10:35:37+00:00",
+  "timestamp": "2026-09-29T13:09:03+00:00",
   "latency_source": "onnxruntime-qnn-local"
 }
