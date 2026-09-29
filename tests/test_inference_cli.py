@@ -27,7 +27,7 @@ def test_import_needs_no_npu_runtime_or_serial(monkeypatch):
 def test_model_defaults_to_the_file_beside_the_script():
     args = inference.parse_args(["--no-serial"])
     assert args.model == inference.DEFAULT_MODEL
-    assert args.model.name == "Buggy.onnx" and args.model.exists()
+    assert args.model.name == "Buggy_fixed_qdq.onnx" and args.model.exists()
 
 
 def test_missing_port_exits_before_touching_the_npu(monkeypatch, capsys):
@@ -95,7 +95,8 @@ class FakeSession:
         self.fail_on_run = fail_on_run
 
     def get_inputs(self):
-        return [type("I", (), {"name": "obs_0"}), type("I", (), {"name": "action_masks"})]
+        return [type("I", (), {"name": "obs_0", "type": "tensor(float)"}),
+                type("I", (), {"name": "action_masks", "type": "tensor(float)"})]
 
     def get_outputs(self):
         return [type("O", (), {"name": n})
