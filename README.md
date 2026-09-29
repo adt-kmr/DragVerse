@@ -55,9 +55,10 @@ Path A and Path B are separate policies. Path B does not run on an NPU.
 ### Path A: Unity policy on the Hexagon NPU
 
 `twin/Buggy.onnx` is the policy exported by Unity ML-Agents: PPO, 14 observations, two
-continuous actions (steer and throttle). It was trained in Unity outside this repository;
-the agent script, trainer configuration and training logs are being added (see
-[Roadmap](#roadmap)).
+continuous actions (steer and throttle). It was trained with Unity ML-Agents in a Unity
+project outside this repository. The agent script and trainer configuration are in
+[`training/unity/`](training/unity/); the training logs for this model were not kept, so
+the training run and machine are not recorded.
 
 `twin/inference.py` runs the policy through ONNX Runtime with the QNN execution provider and sends
 each action to an Arduino running `twin/buggy_motor_controller.ino` over serial
@@ -190,6 +191,7 @@ reconstruction/   Fast (fusion) and fidelity (COLMAP) reconstruction
 semantic/         Point-cloud labelling and the label ontology
 twin/             Twin generator, and Path A: models, inference.py, NPU build and comparison scripts, Arduino sketch
 sarvam/           Task planners: Sarvam (online) and keyword (offline)
+training/unity/   Path A agent script and ML-Agents trainer configuration
 policy/           Path B behaviour cloning and simulation evaluation
 deployment/       int8 export, AI Hub export and profiling, QAIRT conversion
 robot/            Robot adapters (SimRobot, UnoQRobot) and the Path B runner
@@ -209,6 +211,7 @@ tests/            pytest suite
 - Pipeline from capture to deployment behind one REST API and SDK, tested end to end
   in-process
 - Path A: `Buggy.onnx` drove the physical buggy at the event
+- Path A training sources: Unity agent script and ML-Agents trainer configuration
 - Path A NPU build: one QNN kernel on the Hexagon NPU, latency and CPU accuracy measured
 - Path B validated in simulation
 
@@ -219,7 +222,6 @@ tests/            pytest suite
 - FunctionGemma 270M task planning on the Hexagon NPU
 - Whisper speech-to-text on the Hexagon NPU
 - AI Hub compile and profile of `Buggy.onnx` on Snapdragon X Elite
-- Unity training artifacts for `Buggy.onnx`: agent script, trainer configuration, logs
 - Dashboard connected to the live orchestrator, with a clearly labelled replay for the
   public demo
 
