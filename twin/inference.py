@@ -23,10 +23,19 @@ from pathlib import Path
 
 import numpy as np
 
-DEFAULT_MODEL = Path(__file__).with_name("Buggy.onnx")
+DEFAULT_MODEL = Path(__file__).with_name("Buggy_fixed_qdq.onnx")
 EP_NAME = "QNNExecutionProvider"
 DET_OUTPUT = "deterministic_continuous_actions"
 NEUTRAL = (0.0, 0.0)
+
+# ORT_ENABLE_ALL / ORT_ENABLE_EXTENDED run fusions such as QuickGelu before EP
+# partitioning. Those fused nodes only have a CPU kernel, so QNN never sees the original
+# ops it could otherwise have claimed, and can lose the neighboring nodes too since it
+# only partitions contiguous subgraphs. ORT_ENABLE_BASIC skips those fusions and layout
+# transforms while keeping cheap, EP-agnostic optimizations (constant folding, redundant
+# node elimination), so QNN partitions the graph before it gets rewritten into CPU-only
+# fused ops. Kept configurable so the effect of each level can be compared directly.
+_OPT_LEVEL_NAMES = ("disable", "basic", "extended", "all")
 
 
 def _positive_int(text: str) -> int:
@@ -53,6 +62,26 @@ def parse_args(argv=None) -> argparse.Namespace:
     ap.add_argument("--rate-hz", type=_positive_float, default=50.0,
                     help="commands per second sent to the motor controller (serial only)")
     ap.add_argument("--perf-mode", default="burst", help="QNN htp_performance_mode")
+    ap.add_argument("--opt-level", choices=_OPT_LEVEL_NAMES, default="all",
+                    help="ORT graph optimization level applied before EP partitioning. "
+                         "Tried 'basic' to rule out CPU-only fusions stranding QNN nodes; "
+                         "confirmed not the cause (same ops still fell back, latency worse) "
+                         "so this defaults back to 'all'.")
+    ap.add_argument("--verbose-qnn", action="store_true",
+                    help="ask QNN for per-node partitioning/rejection reasons via ORT's "
+                         "verbose log severity, to find out why a node fell back to CPU")
+    ap.add_argument("--vtcm-mb", type=int, default=None,
+                    help="QNN 'vtcm_mb' EP option (Hexagon VTCM scratch memory, MB). "
+                         "Unset by default (QNN's own default, undocumented what that "
+                         "resolves to). Try this if session creation fails with "
+                         "QNN_COMMON_ERROR_MEM_ALLOC during graph finalization.")
+    ap.add_argument("--finalization-mode", choices=["0", "1", "2", "3"], default=None,
+                    help="QNN 'htp_graph_finalization_optimization_mode' EP option. "
+                         "0=default/fastest prep, 3=longest prep/most optimized graph. "
+                         "Unset by default. Worth trying alongside --vtcm-mb for the "
+                         "same MEM_ALLOC finalization failure — direction of effect on "
+                         "memory use isn't documented, so this is a value to try, not a "
+                         "confirmed fix.")
     ap.add_argument("--no-serial", action="store_true",
                     help="benchmark the NPU without a motor controller")
     ap.add_argument("--profile", action="store_true",
@@ -139,25 +168,59 @@ def available_ports() -> list:
     return [f"{p.device}  {p.description}" for p in list_ports.comports()] or ["(none found)"]
 
 
-def open_session(model: Path, perf_mode: str, profile: bool):
+def open_session(model: Path, perf_mode: str, profile: bool, opt_level: str = "all",
+                 verbose_qnn: bool = False, vtcm_mb: int | None = None,
+                 finalization_mode: str | None = None):
     """Register the QNN plugin EP and open a session on the Hexagon NPU.
 
-    These calls are exactly the ones that ran at the event; keep them that way.
+    Everything about these calls ran at the event; keep it that way. opt_level and
+    verbose_qnn are diagnostic knobs, not permanent behavior changes — 'basic' was tried
+    to see whether ORT's own graph fusions (e.g. Sigmoid+Mul -> QuickGelu, CPU-only) were
+    stranding otherwise-QNN-capable nodes. It wasn't: the same ops fell back even
+    unfused, and latency got worse from losing CPU-side optimizations. Default stays
+    'all'. verbose_qnn raises ORT's own log severity to VERBOSE, which prints each EP's
+    node-support decisions during graph partitioning (GetCapability) — that's the next
+    actual diagnostic, not another guess about which op or shape QNN is rejecting.
     """
     import onnxruntime as ort
     import onnxruntime_qnn as qnn_ep
+
+    opt_levels = {
+        "disable": ort.GraphOptimizationLevel.ORT_DISABLE_ALL,
+        "basic": ort.GraphOptimizationLevel.ORT_ENABLE_BASIC,
+        "extended": ort.GraphOptimizationLevel.ORT_ENABLE_EXTENDED,
+        "all": ort.GraphOptimizationLevel.ORT_ENABLE_ALL,
+    }
+
+    if verbose_qnn:
+        ort.set_default_logger_severity(0)  # 0 = VERBOSE
 
     ort.register_execution_provider_library(EP_NAME, qnn_ep.get_library_path())
     devices = [d for d in ort.get_ep_devices() if d.ep_name == EP_NAME]
     if not devices:
         raise RuntimeError("QNN EP device not found")
     print(f"Found {len(devices)} QNN EP device(s)")
+    for d in devices:
+        # Attribute names on OrtEpDevice vary by ORT version; introspect instead of
+        # guessing so this can't crash the run over a diagnostic print.
+        fields = {name: getattr(d, name) for name in dir(d)
+                  if not name.startswith("_") and not callable(getattr(d, name, None))}
+        print(f"  device: {fields}")
 
     options = ort.SessionOptions()
-    options.add_provider_for_devices(devices, {
+    options.graph_optimization_level = opt_levels[opt_level]
+    if verbose_qnn:
+        options.log_severity_level = 0
+        options.log_verbosity_level = 1
+    ep_options = {
         "backend_path": qnn_ep.get_qnn_htp_path(),
         "htp_performance_mode": perf_mode,
-    })
+    }
+    if vtcm_mb is not None:
+        ep_options["vtcm_mb"] = str(vtcm_mb)
+    if finalization_mode is not None:
+        ep_options["htp_graph_finalization_optimization_mode"] = finalization_mode
+    options.add_provider_for_devices(devices, ep_options)
     if profile:
         options.enable_profiling = True
     return ort, ort.InferenceSession(str(model), sess_options=options)
@@ -197,19 +260,22 @@ def drive(session, iterations: int, link, period_s: float = 0.0) -> tuple:
     """
     inputs = {i.name for i in session.get_inputs()}
     det_idx = [o.name for o in session.get_outputs()].index(DET_OUTPUT)
+    first_input = session.get_inputs()[0]
+    input_dtype = np.float16 if "float16" in first_input.type else np.float32
     steer, throttle = NEUTRAL
     samples = []
     try:
         for _ in range(iterations):
             tick = time.perf_counter()
-            feed = {"obs_0": build_observation(
+            obs = build_observation(
                 swivel_angle_rad=0.0, prev_steer=steer, prev_throttle=throttle,
                 local_target_pos=(0.0, 0.0, 5.0), forward_dot=1.0, right_dot=0.0,
                 distance_to_target=5.0, local_velocity=(0.0, 0.0, 0.0),
                 curriculum_progress=0.0,
-            )}
+            ).astype(input_dtype)
+            feed = {"obs_0": obs}
             if "action_masks" in inputs:
-                feed["action_masks"] = np.ones((1, 1), dtype=np.float32)
+                feed["action_masks"] = np.ones((1, 1), dtype=input_dtype)
             start = time.perf_counter()
             action = session.run(None, feed)[det_idx][0]
             samples.append((time.perf_counter() - start) * 1000.0)
@@ -239,6 +305,7 @@ def build_record(args, samples: list, providers, split, ort_version: str,
         "nodes": split,
         "execution_providers": list(providers),
         "perf_mode": args.perf_mode,
+        "opt_level": args.opt_level,
         "onnxruntime_version": ort_version,
         "onnxruntime_qnn_version": qnn_version,
         "serial_port": None if args.no_serial else args.port,
@@ -262,7 +329,8 @@ def main(argv=None) -> int:
         print(f"error: model not found: {args.model}", file=sys.stderr)
         return 2
 
-    ort, session = open_session(args.model, args.perf_mode, args.profile)
+    ort, session = open_session(args.model, args.perf_mode, args.profile, args.opt_level,
+                                args.verbose_qnn, args.vtcm_mb, args.finalization_mode)
     print(f"Session created on {session.get_providers()}")
     link = None if args.no_serial else open_serial(args.port, args.baud)
     try:
@@ -301,3 +369,4 @@ def main(argv=None) -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+    

@@ -181,3 +181,6 @@ capture/android/**/build/
 
 # Local git worktrees
 .worktrees/
+
+twin/Buggy_fixed_*
+!twin/Buggy_fixed_qdq.onnx
