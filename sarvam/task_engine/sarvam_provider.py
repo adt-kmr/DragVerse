@@ -20,6 +20,8 @@ PROMPT = (
 
 
 class SarvamPlanner(TaskPlanner):
+    provider = "sarvam"
+
     def __init__(self, objects=None, model: str = "sarvam-m", timeout: float = 20.0):
         self.objects = [str(o) for o in (objects or [])]
         self.model = model
@@ -28,7 +30,7 @@ class SarvamPlanner(TaskPlanner):
     def plan(self, text: str, lang: str = "en") -> TaskGraph:
         key = os.environ.get("SARVAM_API_KEY")
         if not key:
-            raise RuntimeError("SARVAM_API_KEY is not set; use FunctionGemmaPlanner offline")
+            raise RuntimeError("SARVAM_API_KEY is not set; use KeywordPlanner offline")
 
         import httpx
 

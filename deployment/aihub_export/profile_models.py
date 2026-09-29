@@ -1,4 +1,4 @@
-"""Profile perception models on real Snapdragon silicon via the Qualcomm AI Hub device cloud.
+r"""Profile perception models on real Snapdragon silicon via the Qualcomm AI Hub device cloud.
 
 This is the measurement harness behind the "Technical Implementation" story: resource
 utilization, latency, and energy are judged on numbers from real devices, and this is what
@@ -15,11 +15,21 @@ Usage:
     qai-hub configure --api_token <https://app.aihub.qualcomm.com>
     python -m deployment.aihub_export.profile_models --list-devices
     python -m deployment.aihub_export.profile_models --model mobilenet_v2 --compare
+
+    # Path A policy, as exported by Unity, on the ONNX Runtime target:
+    python -m deployment.aihub_export.profile_models --onnx twin/Buggy.onnx \
+        --target-runtime onnx --device "Snapdragon X Elite CRD" --compare
+    # Only the deterministic action head, on the Hexagon (QNN DLC) target:
+    python -m deployment.aihub_export.profile_models --onnx twin/Buggy.onnx \
+        --deterministic-output deterministic_continuous_actions \
+        --device "Snapdragon X Elite CRD" --compare
 """
 import argparse
+import glob
 import json
 import os
 import sys
+import tempfile
 import typing
 
 BENCHMARK_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "benchmarks")
@@ -153,9 +163,12 @@ def _summarize_profile(profile: dict) -> dict:
     }
 
 
-def profile_model(model, device_name: str, options: str | None = None,
+def profile_model(model, device_name: str, target_runtime: str = DEFAULT_RUNTIME,
                   input_specs: dict | None = None, compare_cpu: bool = False) -> dict:
-    """Compile once, then profile on real hardware. Returns measured numbers.
+    """Compile once at float, then profile on real hardware. Returns measured numbers.
+
+    No quantize job runs here, so the result is float. A `--quantize_full_type` compile
+    flag does not produce a calibrated int8 model; `benchmark` is the int8 path.
 
     When `compare_cpu` is set the *same compiled binary* is profiled a second time with
     `--compute_unit cpu`. Recompiling to a different runtime for the baseline would change
@@ -164,17 +177,15 @@ def profile_model(model, device_name: str, options: str | None = None,
     """
     hub = _require_hub()
     device = pick_device(hub, device_name)
+    options = f"--target_runtime {target_runtime}"
 
-    options = options or f"--target_runtime {DEFAULT_RUNTIME} --quantize_full_type int8"
-    runtime = DEFAULT_RUNTIME if "qnn" in options else "other"
-
-    print(f"  compiling for {device.name} [{options.strip()}] ...")
+    print(f"  compiling for {device.name} [{options}] ...")
     compile_job = hub.submit_compile_job(
         model=model, device=device, options=options, input_specs=input_specs,
     )
     target_model = compile_job.get_target_model()
     if target_model is None:
-        return {"device": device.name, "runtime": runtime, "error": "compile failed",
+        return {"device": device.name, "runtime": target_runtime, "error": "compile failed",
                 "compile_job_url": compile_job.url}
 
     print("  profiling on real hardware ...")
@@ -182,9 +193,10 @@ def profile_model(model, device_name: str, options: str | None = None,
     result = _summarize_profile(profile_job.download_profile())
     result.update({
         "device": device.name,
-        "runtime": runtime,
-        "precision": "int8" if "w8a8" in options or "int8" in options else "float",
-        "compile_options": options.strip(),
+        "runtime": target_runtime,
+        "precision": "float",
+        "quantized": False,
+        "compile_options": options,
         "compile_job_url": compile_job.url,
         "profile_job_url": profile_job.url,
     })
@@ -194,7 +206,7 @@ def profile_model(model, device_name: str, options: str | None = None,
         cpu_job = hub.submit_profile_job(model=target_model, device=device,
                                          options="--compute_unit cpu")
         cpu = _summarize_profile(cpu_job.download_profile())
-        cpu.update({"device": device.name, "runtime": runtime, "compute_unit": "cpu",
+        cpu.update({"device": device.name, "runtime": target_runtime, "compute_unit": "cpu",
                     "profile_job_url": cpu_job.url})
         result["cpu_baseline"] = cpu
 
@@ -204,6 +216,91 @@ def profile_model(model, device_name: str, options: str | None = None,
             result["speedup_vs_cpu"] = round(cpu_ms / npu_ms, 2)
 
     return result
+
+
+def extract_subgraph(onnx_path: str, output: str, out_path: str) -> str:
+    """Cut the graph down to `output` and only the graph inputs it depends on.
+
+    Buggy.onnx carries ML-Agents' sampling head (RandomNormalLike, Multinomial), which the
+    robot never uses at inference time. The deterministic action is plain Gemm/Sigmoid
+    arithmetic, and profiling it alone shows what the policy itself costs on the NPU.
+    """
+    import onnx
+    from onnx.utils import Extractor
+
+    model = onnx.load(onnx_path)
+    outputs = sorted({o for node in model.graph.node for o in node.output if o})
+    if output not in outputs:
+        graph_outputs = [o.name for o in model.graph.output]
+        raise ValueError(f"{output!r} is not produced by {onnx_path}; "
+                         f"graph outputs: {graph_outputs}")
+
+    extractor = Extractor(model)
+    inputs = [i.name for i in model.graph.input]
+    # Extractor keeps every input it is given, used or not; a second pass drops the unused.
+    probe = extractor.extract_model(inputs, [output])
+    used = {name for node in probe.graph.node for name in node.input}
+    sub = extractor.extract_model([i for i in inputs if i in used], [output])
+    onnx.checker.check_model(sub)
+    onnx.save(sub, out_path)
+    return out_path
+
+
+def static_input_specs(onnx_path: str) -> dict:
+    """AI Hub input specs with every dynamic dimension pinned to 1.
+
+    Unity exports a symbolic "batch" dimension. The robot runs one observation at a time,
+    so batch 1 is the shape that matters, and a fixed shape spares the compiler guessing.
+    """
+    import onnx
+    from onnx import helper
+
+    model = onnx.load(onnx_path)
+    weights = {w.name for w in model.graph.initializer}
+    specs = {}
+    for i in model.graph.input:
+        if i.name in weights:
+            continue
+        t = i.type.tensor_type
+        shape = tuple(d.dim_value if d.dim_value > 0 else 1 for d in t.shape.dim)
+        specs[i.name] = (shape, helper.tensor_dtype_to_np_dtype(t.elem_type).name)
+    return specs
+
+
+def _meets_gate(npu: dict) -> bool:
+    # Blueprint section 14 gate: below this, the model needs a GPU fallback path.
+    cov = npu.get("op_coverage_pct")
+    return bool(cov is not None and cov >= 80.0)
+
+
+def profile_onnx(onnx_path: str, device_name: str, target_runtime: str = DEFAULT_RUNTIME,
+                 extract_output: str | None = None, compare: bool = False) -> dict:
+    """Profile a local .onnx file at float, optionally only the subgraph for one output."""
+    stem = os.path.splitext(os.path.basename(onnx_path))[0]
+    name = f"{stem}-{target_runtime}" + (f"-{extract_output}" if extract_output else "")
+
+    with tempfile.TemporaryDirectory() as tmp:
+        model_path = onnx_path
+        if extract_output:
+            model_path = extract_subgraph(onnx_path, extract_output,
+                                          os.path.join(tmp, f"{stem}.onnx"))
+        specs = static_input_specs(model_path)
+        npu = profile_model(model_path, device_name, target_runtime, input_specs=specs,
+                            compare_cpu=compare)
+
+    record: typing.Dict[str, typing.Any] = {
+        "model": name,
+        "source_model": os.path.basename(onnx_path),
+        "extracted_output": extract_output,
+        "input_specs": {k: [list(shape), dtype] for k, (shape, dtype) in specs.items()},
+        "npu": npu,
+    }
+    if "cpu_baseline" in npu:
+        record["cpu"] = npu.pop("cpu_baseline")
+    if "speedup_vs_cpu" in npu:
+        record["speedup_vs_cpu"] = npu.pop("speedup_vs_cpu")
+    record["meets_80pct_npu_gate"] = _meets_gate(npu)
+    return record
 
 
 def _combine_components(parts: dict) -> dict:
@@ -340,22 +437,34 @@ def benchmark(slug: str, device_name: str, compare: bool = False,
             if npu_ms and cpu_ms:
                 record["speedup_vs_cpu"] = round(cpu_ms / npu_ms, 2)
 
-    cov = npu.get("op_coverage_pct")
-    # Blueprint section 14 gate: below this, the model needs a GPU fallback path.
-    record["meets_80pct_npu_gate"] = bool(cov is not None and cov >= 80.0)
+    record["meets_80pct_npu_gate"] = _meets_gate(npu)
     return record
 
 
-def write_results(records: list) -> str:
-    os.makedirs(BENCHMARK_DIR, exist_ok=True)
+def write_results(records: list, out_dir: str = BENCHMARK_DIR) -> str:
+    """Write one file per model, then rebuild summary.json from every record on disk.
+
+    Rebuilding from disk is what lets separate runs accumulate instead of each run
+    replacing the summary with only its own models. Other JSON in the folder (Path A run
+    logs, evaluations) is left out: an AI Hub record has both a "model" and an "npu" key.
+    """
+    os.makedirs(out_dir, exist_ok=True)
     for r in records:
-        path = os.path.join(BENCHMARK_DIR, f"{r['model']}.json")
-        with open(path, "w") as f:
+        with open(os.path.join(out_dir, f"{r['model']}.json"), "w") as f:
             json.dump(r, f, indent=2)
 
-    summary_path = os.path.join(BENCHMARK_DIR, "summary.json")
+    models = []
+    for path in sorted(glob.glob(os.path.join(out_dir, "*.json"))):
+        if os.path.basename(path) == "summary.json":
+            continue
+        with open(path, encoding="utf-8-sig") as f:   # tolerate a Windows BOM
+            doc = json.load(f)
+        if isinstance(doc, dict) and "model" in doc and "npu" in doc:
+            models.append(doc)
+
+    summary_path = os.path.join(out_dir, "summary.json")
     with open(summary_path, "w") as f:
-        json.dump({"models": records}, f, indent=2)
+        json.dump({"models": models}, f, indent=2)
     return summary_path
 
 
@@ -368,6 +477,11 @@ def main():
     ap.add_argument("--compare", action="store_true", help="also profile a CPU baseline")
     ap.add_argument("--calibration-samples", type=int, default=None,
                     help="int8 calibration samples (default: the model's own)")
+    ap.add_argument("--onnx", help="profile a local .onnx file at float precision")
+    ap.add_argument("--target-runtime", choices=("onnx", "qnn_dlc"), default=DEFAULT_RUNTIME,
+                    help="AI Hub target runtime for --onnx")
+    ap.add_argument("--deterministic-output", metavar="NAME",
+                    help="with --onnx: profile only the subgraph that produces NAME")
     args = ap.parse_args()
 
     # qai_hub_models prompts on stdin before cloning model repos, which deadlocks any
@@ -378,8 +492,10 @@ def main():
         list_devices()
         return
 
-    if not args.model:
-        ap.error("pass at least one --model (or --list-devices)")
+    if not args.model and not args.onnx:
+        ap.error("pass --model or --onnx (or --list-devices)")
+    if args.deterministic_output and not args.onnx:
+        ap.error("--deterministic-output needs --onnx")
 
     # Fail on a missing token now, not after downloading pretrained weights.
     _require_hub()
@@ -389,6 +505,11 @@ def main():
         print(f"\n{slug} on {args.device}:")
         records.append(benchmark(slug, args.device, args.compare,
                                  args.calibration_samples))
+
+    if args.onnx:
+        print(f"\n{args.onnx} on {args.device}:")
+        records.append(profile_onnx(args.onnx, args.device, args.target_runtime,
+                                    args.deterministic_output, args.compare))
 
     path = write_results(records)
     print(f"\nwrote {path}")

@@ -48,7 +48,7 @@ def ingest_export(path: str, scan_dir: str) -> dict:
         raise ValueError(f"export {os.path.basename(path)} contains no vertices")
 
     os.makedirs(scan_dir, exist_ok=True)
-    # ponytail: re-encodes to ASCII PLY, which roughly triples a large scan on disk.
+    # NOTE: re-encodes to ASCII PLY, which roughly triples a large scan on disk.
     # Swap write_ply for a binary writer if scan sizes start to hurt.
     dest_path = write_ply(os.path.join(scan_dir, IMPORTED_PLY), points, colors)
     return {

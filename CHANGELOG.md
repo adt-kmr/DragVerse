@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `twin/inference.py` (Path A) runs as committed: no device or serial I/O at import, a
+  `--port`/`--no-serial`/`--profile`/`--log` CLI, and a JSON run record.
+- AI Hub profiling compiles at float and says so; `--onnx` profiles a local ONNX file,
+  optionally only the deterministic action subgraph. `benchmarks/summary.json` now
+  accumulates across runs.
+- AI Hub export reports measured op coverage (or none) and float precision.
+- The offline planner is `KeywordPlanner` with provider `keyword`; it was mislabelled
+  `function_gemma`. Delete an existing `data/dragverse.db` once.
+- README rewritten to describe only what the repository contains.
+
+### Removed
+
+- Deprecated `FunctionGemma` shim in `sarvam/task_engine/fallback.py`.
+
 ### Added
 
 - SQLite metadata store implementing the blueprint §17.2 schema.

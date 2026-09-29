@@ -6,6 +6,13 @@ with its COMPUTE_UNIT_ prefix stripped, times in microseconds, and any metric po
 None. Without these, a schema mismatch would surface as a silent 0%/None rather than an
 error — which is the one failure mode that would put a wrong number in front of a judge.
 """
+import json
+import os
+from types import SimpleNamespace
+
+import pytest
+
+from deployment.aihub_export import profile_models as pm
 from deployment.aihub_export.profile_models import _percentiles, _summarize_profile
 
 
@@ -110,3 +117,118 @@ def test_single_component_passes_through_untouched():
     from deployment.aihub_export.profile_models import _combine_components
     one = {"layers_total": 5, "op_coverage_pct": 80.0}
     assert _combine_components({"only": one}) is one
+
+
+BUGGY = os.path.join(os.path.dirname(__file__), "..", "twin", "Buggy.onnx")
+DET = "deterministic_continuous_actions"
+
+
+def test_extraction_drops_the_sampling_head(tmp_path):
+    onnx = pytest.importorskip("onnx")
+    out = pm.extract_subgraph(BUGGY, DET, str(tmp_path / "det.onnx"))
+    model = onnx.load(out)
+    assert not {n.op_type for n in model.graph.node} & {"RandomNormalLike", "Multinomial"}
+    assert [i.name for i in model.graph.input] == ["obs_0"]   # action_masks is unused
+    assert [o.name for o in model.graph.output] == [DET]
+
+
+class FakeHub:
+    """Records what would be submitted to AI Hub and returns a one-layer NPU profile."""
+
+    def __init__(self):
+        self.compiles = []
+        self.profiles = []
+
+    def get_devices(self):
+        return [SimpleNamespace(name="Snapdragon X Elite CRD")]
+
+    def submit_compile_job(self, model, device, options, input_specs=None):
+        import onnx
+        # Inspect now: the extracted file lives in a temp dir that is gone afterwards.
+        ops = {n.op_type for n in onnx.load(model).graph.node}
+        self.compiles.append({"options": options, "ops": ops, "input_specs": input_specs})
+        return SimpleNamespace(get_target_model=lambda: object(), url="https://hub/c/1")
+
+    def submit_profile_job(self, model, device, options=None):
+        self.profiles.append(options)
+        profile = {"execution_summary": {"estimated_inference_time": 100},
+                   "execution_detail": [{"name": "g", "type": "Gemm",
+                                         "compute_unit": "NPU", "execution_time": 100}]}
+        return SimpleNamespace(download_profile=lambda: profile, url="https://hub/p/1")
+
+
+def test_onnx_mode_compiles_float_and_labels_it(monkeypatch):
+    pytest.importorskip("onnx")
+    hub = FakeHub()
+    monkeypatch.setattr(pm, "_require_hub", lambda: hub)
+
+    record = pm.profile_onnx(BUGGY, "X Elite", target_runtime="qnn_dlc",
+                             extract_output=DET, compare=True)
+
+    assert hub.compiles[0]["options"] == "--target_runtime qnn_dlc"
+    assert "Multinomial" not in hub.compiles[0]["ops"]
+    # Buggy.onnx has a dynamic "batch" dimension; the compile gets a fixed one.
+    assert hub.compiles[0]["input_specs"] == {"obs_0": ((1, 14), "float32")}
+    assert record["input_specs"] == {"obs_0": [[1, 14], "float32"]}
+    assert hub.profiles == [None, "--compute_unit cpu"]   # same binary, CPU baseline
+    assert record["model"] == f"Buggy-qnn_dlc-{DET}"
+    assert record["source_model"] == "Buggy.onnx"
+    assert record["extracted_output"] == DET
+    assert record["npu"]["precision"] == "float"
+    assert record["npu"]["quantized"] is False
+    assert record["npu"]["runtime"] == "qnn_dlc"
+    assert "cpu_baseline" not in record["npu"]
+    assert record["cpu"]["compute_unit"] == "cpu"
+    assert record["speedup_vs_cpu"] == 1.0
+    assert record["meets_80pct_npu_gate"] is True
+
+
+def test_full_model_is_submitted_unmodified(monkeypatch):
+    pytest.importorskip("onnx")
+    hub = FakeHub()
+    monkeypatch.setattr(pm, "_require_hub", lambda: hub)
+    record = pm.profile_onnx(BUGGY, "X Elite", target_runtime="onnx")
+    assert "Multinomial" in hub.compiles[0]["ops"]
+    assert hub.compiles[0]["input_specs"] == {
+        "obs_0": ((1, 14), "float32"), "action_masks": ((1, 1), "float32")}
+    assert record["model"] == "Buggy-onnx"
+    assert record["extracted_output"] is None
+
+
+def test_unknown_output_fails_before_any_hub_job(monkeypatch):
+    pytest.importorskip("onnx")
+    hub = FakeHub()
+    monkeypatch.setattr(pm, "_require_hub", lambda: hub)
+    with pytest.raises(ValueError, match="deterministic_continuous_actions"):
+        pm.profile_onnx(BUGGY, "X Elite", extract_output="deterministic_action")
+    assert hub.compiles == []
+
+
+def test_write_results_accumulates_across_runs(tmp_path):
+    pm.write_results([{"model": "a", "npu": {}}], out_dir=str(tmp_path))
+    pm.write_results([{"model": "b", "npu": {}}], out_dir=str(tmp_path))
+    # A Path A run log shares the folder and is not an AI Hub record.
+    (tmp_path / "path_a_local.json").write_text(json.dumps({"model_file": "Buggy.onnx"}))
+    # Neither is an evaluation that happens to name its model.
+    (tmp_path / "planner_eval_npu.json").write_text(json.dumps({"model": "functiongemma"}))
+
+    summary = pm.write_results([], out_dir=str(tmp_path))
+
+    with open(summary) as f:
+        assert [m["model"] for m in json.load(f)["models"]] == ["a", "b"]
+
+
+def test_rerun_replaces_that_models_record(tmp_path):
+    pm.write_results([{"model": "a", "npu": {"latency_ms": 2.0}}], out_dir=str(tmp_path))
+    summary = pm.write_results([{"model": "a", "npu": {"latency_ms": 1.0}}],
+                               out_dir=str(tmp_path))
+    with open(summary) as f:
+        assert [m["npu"]["latency_ms"] for m in json.load(f)["models"]] == [1.0]
+
+
+def test_write_results_reads_files_saved_with_a_bom(tmp_path):
+    # Windows PowerShell 5.1 writes UTF-8 with a byte-order mark; json.load rejects it.
+    (tmp_path / "session.json").write_bytes(b"\xef\xbb\xbf" + json.dumps({"soc": "x"}).encode())
+    summary = pm.write_results([{"model": "a", "npu": {}}], out_dir=str(tmp_path))
+    with open(summary) as f:
+        assert [m["model"] for m in json.load(f)["models"]] == ["a"]

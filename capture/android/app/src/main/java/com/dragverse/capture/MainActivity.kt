@@ -24,7 +24,7 @@ import javax.microedition.khronos.opengles.GL10
  * Point the phone at a room; every captured ARCore depth frame is packed as an `.npz`
  * and chunk-uploaded to the orchestrator's `POST /capture`.
  *
- * ponytail: no camera preview is drawn — the GL surface exists only because ARCore
+ * NOTE: no camera preview is drawn — the GL surface exists only because ARCore
  * requires a texture bound before `session.update()`. Tracking state and frame count on
  * screen are the operator's feedback. Add a background quad shader if scanning by feel
  * turns out to be too hard in practice.

@@ -1,13 +1,13 @@
 import pytest
 
-from sarvam.task_engine.fallback import FunctionGemmaPlanner
+from sarvam.task_engine.fallback import KeywordPlanner
 from sarvam.task_engine.graph import VOCABULARY, TaskGraph, TaskNode
 from sarvam.task_engine.provider import get_planner
 from sarvam.task_engine.sarvam_provider import SarvamPlanner
 
 
 def plan(text, objects=None):
-    return FunctionGemmaPlanner(objects or []).plan(text)
+    return KeywordPlanner(objects or []).plan(text)
 
 
 def test_two_step_command_becomes_two_sequential_nodes():
@@ -57,7 +57,13 @@ def test_graph_json_round_trip():
 
 def test_factory_picks_offline_planner_without_a_key(monkeypatch):
     monkeypatch.delenv("SARVAM_API_KEY", raising=False)
-    assert isinstance(get_planner(["table"]), FunctionGemmaPlanner)
+    assert isinstance(get_planner(["table"]), KeywordPlanner)
+
+
+def test_every_planner_names_its_provider():
+    """The orchestrator stores this label; it must say what actually planned."""
+    assert KeywordPlanner.provider == "keyword"
+    assert SarvamPlanner.provider == "sarvam"
 
 
 def test_factory_picks_sarvam_when_key_is_set(monkeypatch):

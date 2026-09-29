@@ -1,8 +1,9 @@
-"""Policy -> quantized on-device artifact.
+"""Path B policy -> deployable artifact.
 
-Qualcomm AI Hub when a token is configured; otherwise a local int8 bundle so the
-pipeline still produces a real, loadable artifact offline. Which path ran is always
-reported in `backend` — a local bundle must never be mistaken for a Hexagon-compiled one.
+With a token, Qualcomm AI Hub compiles it (float, no quantize job) and profiles it on a
+real device. Otherwise a local int8 bundle is written so the pipeline still produces a
+real, loadable artifact offline. Which path ran is always reported in `backend`: a local
+bundle must never be mistaken for a Hexagon-compiled one.
 """
 import json
 import os
@@ -10,6 +11,7 @@ import time
 
 import numpy as np
 
+from deployment.aihub_export.profile_models import _summarize_profile
 from policy.finetune.train_bc import LinearPolicy
 
 DEFAULT_DEVICE = "Snapdragon X Elite CRD"
@@ -95,11 +97,12 @@ def _export_via_ai_hub(policy: LinearPolicy, out_dir: str, device_label: str) ->
     traced = torch.jit.trace(module, torch.zeros(1, policy.obs_dim))
 
     device = hub.Device(device_label)
+    # No quantize job runs, so the compiled model is float. Real int8 needs a separate
+    # quantize job with calibration data (see profile_models.benchmark).
     compile_job = hub.submit_compile_job(
         model=traced,
         device=device,
         input_specs={"obs": (1, policy.obs_dim)},
-        options="--quantize_full_type int8",
     )
     target_model = compile_job.get_target_model()
     assert target_model is not None, "Compilation failed to produce a model"
@@ -108,17 +111,18 @@ def _export_via_ai_hub(policy: LinearPolicy, out_dir: str, device_label: str) ->
     artifact_path = os.path.join(out_dir, "policy.tflite")
     target_model.download(artifact_path)
 
-    profile = hub.submit_profile_job(model=target_model, device=device).download_profile()
-    runtime = profile["execution_summary"]
+    measured = _summarize_profile(
+        hub.submit_profile_job(model=target_model, device=device).download_profile())
 
     manifest = {
         "artifact_path": artifact_path,
         "format": "tflite",
         "backend": "ai-hub",
         "device_label": device_label,
-        "precision": "int8",
-        "op_coverage": 100.0 * runtime.get("compute_unit_ratio", {}).get("NPU", 1.0),
-        "est_latency_ms": runtime["estimated_inference_time"] / 1000.0,
+        "precision": "float",
+        "op_coverage": measured["op_coverage_pct"],
+        "est_latency_ms": measured["latency_ms"],
+        "latency_source": "ai-hub-device-cloud",
         "obs_dim": policy.obs_dim,
         "act_dim": policy.act_dim,
     }

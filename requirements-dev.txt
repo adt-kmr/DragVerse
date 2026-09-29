@@ -3,6 +3,7 @@
 # Test + coverage
 pytest>=8.0.0
 pytest-cov>=4.1.0
+onnx>=1.16.0         # Buggy.onnx subgraph extraction tests (deployment/aihub_export)
 
 # Lint / format / type / security — every tool `make lint`, `make format-check`
 # and the CI security job invoke.

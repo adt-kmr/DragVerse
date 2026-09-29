@@ -51,3 +51,23 @@ def test_identifiers_are_rejected_not_interpolated(conn):
         db.insert(conn, "scans", **{"device) VALUES ('x'); --": "x"})
     # the guard did not take the table down with it
     assert db.get(conn, "scans", "missing") is None
+
+
+def test_task_graph_accepts_the_keyword_provider(conn):
+    scan_id = db.insert(conn, "scans", device="test", status="complete")
+    mesh_id = db.insert(conn, "meshes", scan_id=scan_id, mode="fast")
+    twin_id = db.insert(conn, "twins", mesh_id=mesh_id)
+    graph_id = db.insert(conn, "task_graphs", twin_id=twin_id, provider="keyword",
+                         source_text="go to the table", lang="en", graph_json="{}")
+    assert db.get(conn, "task_graphs", graph_id)["provider"] == "keyword"
+
+
+def test_stale_task_graphs_schema_is_refused():
+    """CREATE TABLE IF NOT EXISTS never alters a table, so an old database would reject
+    every 'keyword' insert. Startup must say so instead of failing on the first /plan."""
+    c = db.connect(":memory:")
+    c.execute("CREATE TABLE task_graphs(id TEXT PRIMARY KEY, "
+              "provider TEXT CHECK (provider IN ('sarvam','function_gemma')))")
+    with pytest.raises(RuntimeError, match="database schema changed"):
+        db.init_db(c)
+    c.close()

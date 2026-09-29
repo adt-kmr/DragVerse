@@ -40,7 +40,7 @@ const TIERS = [
   ["Snapdragon", "The quantized policy, executing on the NPU with the radios off."],
 ];
 
-// ponytail: streamlined workflow steps focused on user onboarding perspective
+// NOTE: streamlined workflow steps focused on user onboarding perspective
 const SCANIVERSE_STEPS = [
   ["01", "Capture Space (Scaniverse)", "Scan your physical room or environment using Scaniverse on your mobile device and export the scan as a .ply or .obj file.", "User Action: Scaniverse App → Export PLY/OBJ"],
   ["02", "Onboard & Import Scan", "Open the DragVerse dashboard, set up your project workspace, and drag-and-drop your exported Scaniverse 3D file.", "User Action: Workspace Onboarding → Upload Scan"],

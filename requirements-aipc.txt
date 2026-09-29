@@ -1,0 +1,16 @@
+# Path A (twin/inference.py) on the Snapdragon AI PC: Windows on ARM, native ARM64
+# Python 3.12 (numpy, onnxruntime and onnxruntime-qnn all ship win_arm64 wheels for it).
+#
+#   py -V:3.12-arm64 -m venv .venv
+#   .venv\Scripts\activate
+#   pip install -r requirements-aipc.txt
+#
+# torch has no Windows ARM64 wheel on PyPI, so requirements-npu.txt (AI Hub tooling) is
+# not installed here; AI Hub jobs run from any other machine.
+
+numpy>=1.26.0
+onnxruntime>=1.24.2
+# 2.x is the plugin package the script uses (onnxruntime_qnn.get_library_path,
+# get_qnn_htp_path). 1.x is a full ONNX Runtime build installed as "onnxruntime".
+onnxruntime-qnn>=2.0,<3
+pyserial>=3.5

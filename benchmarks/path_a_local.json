@@ -1,0 +1,25 @@
+{
+  "model_file": "Buggy_fixed_qdq.onnx",
+  "model_sha256": "f9cc946d15b7310c075250a6b4d92c233e0657fe32f72954d6a1377db5abb3fe",
+  "iterations": 1000,
+  "latency_ms": {
+    "p50": 0.0342,
+    "p95": 0.0467,
+    "max": 4.7316,
+    "mean": 0.041
+  },
+  "nodes": null,
+  "execution_providers": [
+    "QNNExecutionProvider",
+    "CPUExecutionProvider"
+  ],
+  "perf_mode": "burst",
+  "opt_level": "all",
+  "onnxruntime_version": "1.30.0",
+  "onnxruntime_qnn_version": "2.6.0",
+  "serial_port": null,
+  "rate_hz": null,
+  "profiled": false,
+  "timestamp": "2026-09-29T13:09:01+00:00",
+  "latency_source": "onnxruntime-qnn-local"
+}

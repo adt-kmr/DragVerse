@@ -1,0 +1,21 @@
+﻿
+Status FriendlyName                               InstanceId   
+------ ------------                               ----------   
+OK     Standard Serial over Bluetooth link (COM6) BTHENUM\{0000
+                                                  1101-0000-100
+                                                  0-8000-00805F
+                                                  9B34FB}_LOCAL
+                                                  MFG&0000\5&32
+                                                  3AAFF1&0&0000
+                                                  00000000_0000
+                                                  0000         
+OK     Standard Serial over Bluetooth link (COM7) BTHENUM\{0000
+                                                  1101-0000-100
+                                                  0-8000-00805F
+                                                  9B34FB}_VID&0
+                                                  90005AC_PID&0
+                                                  22C\5&323AAFF
+                                                  1&0&0D3B928F3
+                                                  95F_C00000000
+
+

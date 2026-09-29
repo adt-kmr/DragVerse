@@ -1,0 +1,34 @@
+{
+  "model_file": "Buggy_fixed_qdq.onnx",
+  "model_sha256": "f9cc946d15b7310c075250a6b4d92c233e0657fe32f72954d6a1377db5abb3fe",
+  "iterations": 200,
+  "latency_ms": {
+    "p50": 0.0912,
+    "p95": 0.1254,
+    "max": 4.0719,
+    "mean": 0.1191
+  },
+  "nodes": {
+    "kernels_by_provider": {
+      "CPUExecutionProvider": 2,
+      "QNNExecutionProvider": 1
+    },
+    "cpu_nodes": [
+      "deterministic_continuous_actions_DequantizeLinear",
+      "obs_0_QuantizeLinear"
+    ]
+  },
+  "execution_providers": [
+    "QNNExecutionProvider",
+    "CPUExecutionProvider"
+  ],
+  "perf_mode": "burst",
+  "opt_level": "all",
+  "onnxruntime_version": "1.30.0",
+  "onnxruntime_qnn_version": "2.6.0",
+  "serial_port": null,
+  "rate_hz": null,
+  "profiled": true,
+  "timestamp": "2026-09-29T13:09:03+00:00",
+  "latency_source": "onnxruntime-qnn-local"
+}

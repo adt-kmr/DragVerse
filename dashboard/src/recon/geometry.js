@@ -37,7 +37,7 @@ function solid(geometry, material, x, y, z) {
   return mesh;
 }
 
-/** Wireframe overlay for the phase-3 reveal stage — see the ponytail note on
+/** Wireframe overlay for the phase-3 reveal stage — see the NOTE on
     edgeOpacity in recon.js for why this fades as a set rather than growing edge-by-edge.
     LineSegments2 (fat lines, screen-space quads) rather than plain LineSegments+
     EdgesGeometry — 1px GL_LINE primitives render unreliably without MSAA (confirmed

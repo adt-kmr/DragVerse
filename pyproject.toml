@@ -34,7 +34,7 @@ line_length = 100
 # flake8 config lives in setup.cfg — flake8 does not read pyproject.toml.
 
 [tool.mypy]
-# ponytail: baseline, not strict. `strict = true` yields 206 errors against the
+# NOTE: baseline, not strict. `strict = true` yields 206 errors against the
 # existing untyped stages; turn it back on per-package as each grows annotations.
 # No python_version pin — pinning 3.10 makes mypy choke on numpy's 3.12+ stubs.
 ignore_missing_imports = true

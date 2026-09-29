@@ -91,7 +91,7 @@ def test_full_pipeline_reaches_a_running_deployment(client):
 
     planned = client.post("/plan", json={
         "twin_id": twin["twin_id"], "text": "go to the table", "lang": "en"}).json()
-    assert planned["provider"] == "function_gemma"
+    assert planned["provider"] == "keyword"
     assert json.loads(planned["graph_json"])["nodes"][0]["action"] == "navigate_to"
 
     trained = client.post("/train", json={

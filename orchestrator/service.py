@@ -235,7 +235,7 @@ def plan(body: dict = Body(...)):
     objects = _objects_for(conn, twin["mesh_id"])
     planner = get_planner([o["label"] for o in objects])
     graph = planner.plan(text, lang)
-    provider = "sarvam" if type(planner).__name__ == "SarvamPlanner" else "function_gemma"
+    provider = planner.provider
 
     graph_id = db.insert(conn, "task_graphs", twin_id=twin_id, source_text=text,
                          lang=lang, provider=provider, graph_json=graph.to_json())

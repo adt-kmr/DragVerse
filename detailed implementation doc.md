@@ -4,63 +4,63 @@ Snapdragon Multiverse Hackathon, Noida | System Design Blueprint v2 (Reviewed)
 
 July 2026
 
-- [0. Reviewer’s Note: What Changed From v1 and Why](file:///home/claude/dragverse/blueprint.html#reviewers-note-what-changed-from-v1-and-why)
+- [0. Reviewer’s Note: What Changed From v1 and Why](#0-reviewers-note-what-changed-from-v1-and-why)
 
-- [1. Vision & Product Positioning](file:///home/claude/dragverse/blueprint.html#vision-product-positioning)
+- [1. Vision & Product Positioning](#1-vision--product-positioning)
 
-- [2. Problem Statement](file:///home/claude/dragverse/blueprint.html#problem-statement)
+- [2. Problem Statement](#2-problem-statement)
 
-- [3. Pipeline Landscape: Qualcomm/Edge vs. Cloud‑Centric Robotics Stacks](file:///home/claude/dragverse/blueprint.html#pipeline-landscape-qualcommedge-vs.-cloudcentric-robotics-stacks)
+- [3. Pipeline Landscape: Qualcomm/Edge vs. Cloud‑Centric Robotics Stacks](#3-pipeline-landscape-qualcommedge-vs-cloudcentric-robotics-stacks)
 
-- [4. Qualcomm Ecosystem Alignment](file:///home/claude/dragverse/blueprint.html#qualcomm-ecosystem-alignment)
+- [4. Qualcomm Ecosystem Alignment](#4-qualcomm-ecosystem-alignment)
 
-- [5. OnePlus, CodeMate, and Sarvam Integration](file:///home/claude/dragverse/blueprint.html#oneplus-codemate-and-sarvam-integration)
+- [5. OnePlus, CodeMate, and Sarvam Integration](#5-oneplus-codemate-and-sarvam-integration)
 
-- [6. End‑to‑End System Architecture](file:///home/claude/dragverse/blueprint.html#endtoend-system-architecture)
+- [6. End‑to‑End System Architecture](#6-endtoend-system-architecture)
 
-- [7. Detailed Sequence Diagram](file:///home/claude/dragverse/blueprint.html#detailed-sequence-diagram)
+- [7. Detailed Sequence Diagram](#7-detailed-sequence-diagram)
 
-- [8. Component‑by‑Component Design](file:///home/claude/dragverse/blueprint.html#componentbycomponent-design)
+- [8. Component‑by‑Component Design](#8-componentbycomponent-design)
 
-- [9. Data Flow Diagram](file:///home/claude/dragverse/blueprint.html#data-flow-diagram)
+- [9. Data Flow Diagram](#9-data-flow-diagram)
 
-- [10. World Coordinate System & Localization](file:///home/claude/dragverse/blueprint.html#world-coordinate-system-localization)
+- [10. World Coordinate System & Localization](#10-world-coordinate-system--localization)
 
-- [11. Sim‑to‑Real Pipeline](file:///home/claude/dragverse/blueprint.html#simtoreal-pipeline)
+- [11. Sim‑to‑Real Pipeline](#11-simtoreal-pipeline)
 
-- [12. RL / Policy‑Learning Pipeline](file:///home/claude/dragverse/blueprint.html#rl-policylearning-pipeline)
+- [12. RL / Policy‑Learning Pipeline](#12-rl--policylearning-pipeline)
 
-- [13. Robot Deployment](file:///home/claude/dragverse/blueprint.html#robot-deployment)
+- [13. Robot Deployment](#13-robot-deployment)
 
-- [14. Edge AI Optimization (Qualcomm AI Hub / QAIRT)](file:///home/claude/dragverse/blueprint.html#edge-ai-optimization-qualcomm-ai-hub-qairt)
+- [14. Edge AI Optimization (Qualcomm AI Hub / QAIRT)](#14-edge-ai-optimization-qualcomm-ai-hub--qairt)
 
-- [15. Repository Structure](file:///home/claude/dragverse/blueprint.html#repository-structure)
+- [15. Repository Structure](#15-repository-structure)
 
-- [16. API Specification (Orchestrator REST Surface)](file:///home/claude/dragverse/blueprint.html#api-specification-orchestrator-rest-surface)
+- [16. API Specification (Orchestrator REST Surface)](#16-api-specification-orchestrator-rest-surface)
 
-- [17. Folder Structure, UML, and DB Schema](file:///home/claude/dragverse/blueprint.html#folder-structure-uml-and-db-schema)
+- [17. Folder Structure, UML, and DB Schema](#17-folder-structure-uml-and-db-schema)
 
-- [17.1 Core Class Diagram (text form)](file:///home/claude/dragverse/blueprint.html#core-class-diagram-text-form)
+- [17.1 Core Class Diagram (text form)](#171-core-class-diagram-text-form)
 
-- [17.2 DB Schema (Postgres/SQLite — shared metadata store)](file:///home/claude/dragverse/blueprint.html#db-schema-postgressqlite-shared-metadata-store)
+- [17.2 DB Schema (Postgres/SQLite — shared metadata store)](#172-db-schema-postgressqlite--shared-metadata-store)
 
-- [18. ROS2 and Unity Project Structure](file:///home/claude/dragverse/blueprint.html#ros2-and-unity-project-structure)
+- 18. ROS2 and Unity Project Structure
 
-- [19. SDK Design](file:///home/claude/dragverse/blueprint.html#sdk-design)
+- [19. SDK Design](#19-sdk-design)
 
-- [20. Plugin Architecture](file:///home/claude/dragverse/blueprint.html#plugin-architecture)
+- [20. Plugin Architecture](#20-plugin-architecture)
 
-- [21. Deployment Architecture](file:///home/claude/dragverse/blueprint.html#deployment-architecture)
+- [21. Deployment Architecture](#21-deployment-architecture)
 
-- [22. Docker & Kubernetes (Optional)](file:///home/claude/dragverse/blueprint.html#docker-kubernetes-optional)
+- [22. Docker & Kubernetes (Optional)](#22-docker--kubernetes-optional)
 
-- [23. Security Considerations](file:///home/claude/dragverse/blueprint.html#security-considerations)
+- [23. Security Considerations](#23-security-considerations)
 
-- [24. Performance Targets](file:///home/claude/dragverse/blueprint.html#performance-targets)
+- [24. Performance Targets](#24-performance-targets)
 
-- [25. Scalability](file:///home/claude/dragverse/blueprint.html#scalability)
+- [25. Scalability](#25-scalability)
 
-- [26. Open‑Source Components Used & Licensing](file:///home/claude/dragverse/blueprint.html#opensource-components-used-licensing)
+- [26. Open‑Source Components Used & Licensing](#26-opensource-components-used--licensing)
 
 ## 0. Reviewer’s Note: What Changed From v1 and Why
 
