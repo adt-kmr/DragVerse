@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Dashboard: `dashboard/src/api.js` is the orchestrator client again. Vercel builds (or
+  `DASHBOARD_MODE=simulated`) use the replay in `dashboard/src/sim.js`, which the console
+  labels "simulated demo" and which reports no latency or NPU figures. UI copy now matches
+  the README, and the model and robot pickers with no backend behind them are removed.
 - AI Hub profiling (`deployment/aihub_export/profile_models.py`):
   - failed compile and profile jobs are recorded with AI Hub's reason, not as empty or
     crashing results;

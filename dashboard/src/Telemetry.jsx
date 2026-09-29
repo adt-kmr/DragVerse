@@ -1,22 +1,22 @@
 import React, { useEffect, useState } from "react";
-import { benchmarks } from "./api";
+import { benchmarks } from "./backend.js";
 
 // Blueprint section 14: below this share of layers on the NPU, a model needs a GPU
 // fallback path rather than being called "NPU-deployed".
 const NPU_GATE = 80;
 
 /**
- * Where each workload runs, and why it belongs there. This is the argument the
- * benchmark numbers below are evidence for — the UNO Q row is deliberately "no NPU",
- * because a QRB2210 has an Adreno 702 and a low-power Hexagon DSP, not a tensor NPU.
+ * Where each workload runs today, matching the README. Only Path A uses the NPU. The UNO
+ * Q row is deliberately "no NPU": a QRB2210 has an Adreno 702 and a low-power Hexagon
+ * DSP, not a tensor NPU.
  */
 const TIERS = [
-  { tier: "Perception", silicon: "OnePlus 15 · 8 Elite", unit: "Hexagon NPU",
-    workload: "YOLO-World + MobileSAM, INT8" },
-  { tier: "Orchestration", silicon: "X Elite AI PC", unit: "NPU",
-    workload: "Reconstruction, twin gen, planning" },
-  { tier: "Actuation", silicon: "Arduino UNO Q · QRB2210", unit: "CPU (no NPU)",
-    workload: "INT8 linear policy" },
+  { tier: "Path A policy", silicon: "Snapdragon X2 Elite AI PC", unit: "Hexagon NPU",
+    workload: "Unity PPO policy, QDQ" },
+  { tier: "Pipeline", silicon: "Host machine", unit: "CPU",
+    workload: "Reconstruction, segmentation, twin gen, planning, training" },
+  { tier: "Path B policy", silicon: "Arduino UNO Q · QRB2210", unit: "CPU (no NPU)",
+    workload: "INT8 linear policy, validated in simulation" },
 ];
 
 /** Prefer the measured p50 over the single-point estimate when the profile has runs. */

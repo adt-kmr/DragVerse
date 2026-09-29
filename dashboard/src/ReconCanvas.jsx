@@ -157,9 +157,9 @@ export default function ReconCanvas() {
             <em>Get a robot that works in it.</em>
           </h1>
           <p className="lede">
-            DragVerse turns a walk-through scan into a simulation-ready twin, trains a policy
-            inside that twin, and ships a quantized artifact that runs on Snapdragon with the
-            network off.
+            DragVerse turns a walk-through scan into a simulation-ready twin and trains a robot
+            policy inside it. Its Unity-trained buggy policy runs on the Hexagon NPU of a
+            Snapdragon AI PC with the network off.
           </p>
           <p className="scrollcue">Scroll to run the pipeline</p>
         </div>
