@@ -78,9 +78,9 @@ $info = [ordered]@{
 Get-Content benchmarks\session.json
 ```
 
-Check `soc` by eye. The README currently says "Snapdragon X Elite"; if this machine is an
-X2 Elite (or anything else), say so when you send the results so the README can be
-corrected. If `npu` or `npu_driver` is empty, open Device Manager, expand "Neural
+Check `soc` by eye. It should read Snapdragon X2 Elite (X2E88100), which is what the
+README names; if it shows another chip, say so when you send the results so the README can
+be corrected. If `npu` or `npu_driver` is empty, open Device Manager, expand "Neural
 processors", and add the device name and driver version to the file by hand.
 
 ## 3. Path A latency on the NPU
