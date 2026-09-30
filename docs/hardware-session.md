@@ -16,7 +16,7 @@ step fails, stop and send the full console output instead of working around it.
 | 5. Serial port and board evidence | AI PC | `docs/evidence/serial_ports.txt`, board photo | 6 |
 | 6. Serial run with the buggy | AI PC + Arduino | `benchmarks/path_a_serial.json` | 6 |
 | 7. Commit and push | AI PC | branch `hw/ai-pc-session` | – |
-| 8. Next session: NPU accuracy | AI PC | `benchmarks/path_a_accuracy_npu.json` | mentor follow-up |
+| 8. Later sessions | AI PC | added when those branches are pushed | 4, 5 |
 
 ---
 
@@ -78,9 +78,9 @@ $info = [ordered]@{
 Get-Content benchmarks\session.json
 ```
 
-Check `soc` by eye. The README currently says "Snapdragon X Elite"; if this machine is an
-X2 Elite (or anything else), say so when you send the results so the README can be
-corrected. If `npu` or `npu_driver` is empty, open Device Manager, expand "Neural
+Check `soc` by eye. It should read Snapdragon X2 Elite (X2E88100), which is what the
+README names; if it shows another chip, say so when you send the results so the README can
+be corrected. If `npu` or `npu_driver` is empty, open Device Manager, expand "Neural
 processors", and add the device name and driver version to the file by hand.
 
 ## 3. Path A latency on the NPU
@@ -182,102 +182,39 @@ git push -u origin hw/ai-pc-session
 Send the console output of steps 1 to 6 along with the push, especially anything that
 did not match the "Expected" lines.
 
-## 8. Next session: NPU accuracy (mentor follow-up)
+## 8. Next session
 
-**Why:** `benchmarks/path_a_accuracy_cpu.json` was measured on a Mac with both models on
-the CPU. The mentor asked for the same comparison with the quantized model running on the
-NPU itself, through the QNN execution provider. Only this AI PC can produce it. About 15
-minutes; no Arduino needed.
+Pull `main` first (`git switch main && git pull`), then set up as in step 1. Both steps
+write a file into `benchmarks/`; step 2 may instead fail, and its console output is then
+the evidence.
 
-**Rules:** run everything from the repository root, in the ARM64 virtual environment from
-step 1. Do not edit code, tolerances or model files. If a step fails, stop and send the
-full console output.
-
-### 8.1 Update the repository
-
-```powershell
-cd DragVerse
-.venv\Scripts\activate
-git status --short
-```
-
-`git status` must print nothing. If it lists changes, run `git stash -u` first (this keeps
-them, out of the way). Then:
-
-```powershell
-git switch main
-git pull
-Get-FileHash twin\Buggy_fixed_qdq.onnx
-```
-
-Expected hash: `F9CC946D15B7310C075250A6B4D92C233E0657FE32F72954D6A1377DB5ABB3FE`. If it
-differs, stop: the model on this machine is not the committed one.
-
-### 8.2 Check the NPU (30 seconds)
-
-```powershell
-python twin/inference.py --no-serial --iterations 5
-```
-
-Expected: `Found ... QNN EP device(s)` and a `5 inferences: p50` line. If it prints
-`QNN EP device not found`, redo the checks in step 1.
-
-### 8.3 Run the NPU accuracy comparison (the mentor's request)
+1. Accuracy of the NPU build on the NPU, against the original model on the CPU:
 
 ```powershell
 python -m twin.compare_models --log benchmarks/path_a_accuracy_npu.json
 ```
 
-Do **not** add `--cpu`: that flag runs the quantized model on the CPU, which is what the Mac
-already did. What the script does: `Buggy.onnx` (the Unity export) runs on the CPU as the
-reference, `Buggy_fixed_qdq.onnx` runs on the NPU through QNN, both see the same 500
-random observations, and it records the largest steer and throttle difference.
+   Expected: `"within_tolerance": true` and exit code 0. The largest steer and throttle
+   differences are in the output; on the CPU they were 0.019 and 0.035.
 
-Check the JSON it prints:
-
-| Field | Expected |
-|---|---|
-| `candidate.providers` | starts with `QNNExecutionProvider`. If it lists only `CPUExecutionProvider`, the run did not use the NPU: stop and send the output |
-| `candidate.model_sha256` | starts with `f9cc946d` |
-| `actions.steer.max_abs_diff`, `actions.throttle.max_abs_diff` | on the CPU they were 0.019 and 0.035; any value is a valid result |
-| `within_tolerance` | `true`, and the command exits normally |
-
-If `within_tolerance` is `false`, the script exits with code 1 but still writes the file.
-That is a finding, not a failure: commit the file anyway and say so in your message.
-
-### 8.4 Optional: where the original float model runs (1 minute)
+2. Where the original float `Buggy.onnx` runs through the QNN execution provider:
 
 ```powershell
 python twin/inference.py --model twin/Buggy.onnx --no-serial --profile --log benchmarks/path_a_profile_float.json
 ```
 
-This records whether `Buggy.onnx`, as exported by Unity, runs on the NPU locally. If the
-session fails to open, save the full console output as `docs/evidence/path_a_float_qnn.txt`
-instead. Either outcome is useful evidence.
+   The README says its nodes stayed on the CPU locally; this run is the evidence. If the
+   session fails to open, save the full console output as
+   `docs/evidence/path_a_float_qnn.txt` instead.
 
-### 8.5 Optional: serial run
+3. Steps 5 and 6, if the buggy's Arduino is now available.
 
-Only if the buggy's Arduino is available: steps 5 and 6.
-
-### 8.6 Commit and open a pull request
-
-Add only the files this session produced:
+Commit on a new branch and open a pull request:
 
 ```powershell
-git switch -c hw/npu-accuracy
-git add benchmarks/path_a_accuracy_npu.json
-git add benchmarks/path_a_profile_float.json   # only if 8.4 produced it
-git add docs/evidence                          # only if 8.4 or 8.5 added files there
+git switch -c hw/ai-pc-session-2
+git add benchmarks docs/evidence
 git status --short
+git commit -m "bench: Path A accuracy on the NPU and float model placement"
+git push -u origin hw/ai-pc-session-2
 ```
-
-`git status` must list only those files. Then:
-
-```powershell
-git commit -m "bench: Path A accuracy with the quantized model on the NPU"
-git push -u origin hw/npu-accuracy
-```
-
-Open a pull request into `main` on GitHub (the push prints the link). Do not merge it; CI
-and a review on the Mac side will. Send the console output of 8.2 to 8.4 along with the
-link.
