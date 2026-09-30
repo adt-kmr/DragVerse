@@ -1,3 +1,8 @@
+> **Historical design document.** This is the system design blueprint written before the
+> July 2026 event. Much of it was never built (for example the FunctionGemma planner and
+> the UNO Q NPU deployment). The [README](../README.md) describes what the repository
+> contains, and `benchmarks/` holds everything that was measured.
+
 ## DragVerse System Design Blueprint v2
 
 Snapdragon Multiverse Hackathon, Noida | System Design Blueprint v2 (Reviewed)

@@ -182,14 +182,39 @@ git push -u origin hw/ai-pc-session
 Send the console output of steps 1 to 6 along with the push, especially anything that
 did not match the "Expected" lines.
 
-## 8. Later sessions
+## 8. Next session
 
-These also need the AI PC. Their commands are added to this document when the code is
-pushed:
+Pull `main` first (`git switch main && git pull`), then set up as in step 1. Both steps
+write a file into `benchmarks/`; step 2 may instead fail, and its console output is then
+the evidence.
 
-- **FunctionGemma 270M planner on the NPU**: accuracy and latency evaluation, written to
-  `benchmarks/planner_eval_npu.json` (mentor item 4).
-- **Whisper speech-to-text on the NPU**: evaluation, written to
-  `benchmarks/whisper_eval.json`.
-- **Dashboard replay recording**: a recorded pipeline run against the live orchestrator,
-  written to `dashboard/src/replay/run.json` (mentor item 5).
+1. Accuracy of the NPU build on the NPU, against the original model on the CPU:
+
+```powershell
+python -m twin.compare_models --log benchmarks/path_a_accuracy_npu.json
+```
+
+   Expected: `"within_tolerance": true` and exit code 0. The largest steer and throttle
+   differences are in the output; on the CPU they were 0.019 and 0.035.
+
+2. Where the original float `Buggy.onnx` runs through the QNN execution provider:
+
+```powershell
+python twin/inference.py --model twin/Buggy.onnx --no-serial --profile --log benchmarks/path_a_profile_float.json
+```
+
+   The README says its nodes stayed on the CPU locally; this run is the evidence. If the
+   session fails to open, save the full console output as
+   `docs/evidence/path_a_float_qnn.txt` instead.
+
+3. Steps 5 and 6, if the buggy's Arduino is now available.
+
+Commit on a new branch and open a pull request:
+
+```powershell
+git switch -c hw/ai-pc-session-2
+git add benchmarks docs/evidence
+git status --short
+git commit -m "bench: Path A accuracy on the NPU and float model placement"
+git push -u origin hw/ai-pc-session-2
+```

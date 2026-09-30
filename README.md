@@ -247,8 +247,6 @@ tests/            pytest suite
 
 - Path A NPU build driving the buggy over serial, and its accuracy measured on the NPU
 - Calibration of the NPU build from recorded Unity observations
-- FunctionGemma 270M task planning on the Hexagon NPU
-- Whisper speech-to-text on the Hexagon NPU
 
 ## Team
 

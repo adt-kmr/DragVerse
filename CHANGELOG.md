@@ -46,6 +46,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- FunctionGemma and Whisper from the README roadmap, the third-party licence list and the
+  AI PC runbook: neither exists in the code (mentor item 4). The runbook's next session
+  now covers the NPU accuracy run and the float-model placement check.
+- Repository root clutter: two hackathon screenshots, an outdated deck export, stale copies
+  of the dashboard's DESIGN.md and PRODUCT.md, an unrelated design template and design-tool
+  config. The pre-event blueprint moved to `docs/blueprint-v2.md` with a note that it
+  describes a plan, not what was built. Unused Git LFS rules removed.
 - Deprecated `FunctionGemma` shim in `sarvam/task_engine/fallback.py`.
 
 ### Added
