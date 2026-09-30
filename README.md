@@ -143,11 +143,13 @@ Arduino sketch goes neutral after 500 ms without a command.
 Numbers are published here only with a link to the committed JSON in `benchmarks/` that
 produced them.
 
+### AI PC, Snapdragon X2 Elite (X2E88100)
+
 | Measurement | Result | Source |
 |---|---|---|
-| `Buggy_fixed_qdq.onnx` latency, AI PC NPU, 1,000 runs, `session.run` only | p50 0.034 ms, p95 0.047 ms, max 4.73 ms | [`path_a_local.json`](benchmarks/path_a_local.json) |
-| Where the graph runs, AI PC | One QNN kernel; only the input QuantizeLinear and output DequantizeLinear run on the CPU | [`path_a_profile.json`](benchmarks/path_a_profile.json) |
-| Quantized vs original, 500 observations, both on CPU | Largest difference: steer 0.019, throttle 0.035 | [`path_a_accuracy_cpu.json`](benchmarks/path_a_accuracy_cpu.json) |
+| `Buggy_fixed_qdq.onnx` latency, X2 Elite AI PC NPU, 1,000 runs, `session.run` only | p50 0.034 ms, p95 0.047 ms, max 4.73 ms | [`path_a_local.json`](benchmarks/path_a_local.json) |
+| Where the graph runs, X2 Elite AI PC | One QNN kernel; only the input QuantizeLinear and output DequantizeLinear run on the CPU | [`path_a_profile.json`](benchmarks/path_a_profile.json) |
+| Quantized vs original, 500 observations, both on CPU (run on a Mac, not the AI PC) | Largest difference: steer 0.019, throttle 0.035 | [`path_a_accuracy_cpu.json`](benchmarks/path_a_accuracy_cpu.json) |
 | Test machine | Snapdragon X2 Elite (X2E88100), ONNX Runtime 1.30.0, onnxruntime-qnn 2.6.0 | [`session.json`](benchmarks/session.json) |
 
 ### Qualcomm AI Hub, Snapdragon X Elite (cloud device)
