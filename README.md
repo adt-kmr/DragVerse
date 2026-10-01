@@ -149,8 +149,12 @@ produced them.
 |---|---|---|
 | `Buggy_fixed_qdq.onnx` latency, X2 Elite AI PC NPU, 1,000 runs, `session.run` only | p50 0.034 ms, p95 0.047 ms, max 4.73 ms | [`path_a_local.json`](benchmarks/path_a_local.json) |
 | Where the graph runs, X2 Elite AI PC | One QNN kernel; only the input QuantizeLinear and output DequantizeLinear run on the CPU | [`path_a_profile.json`](benchmarks/path_a_profile.json) |
-| Quantized vs original, 500 observations, both on CPU | Largest difference: steer 0.019, throttle 0.035 | [`path_a_accuracy_cpu.json`](benchmarks/path_a_accuracy_cpu.json) |
+| Quantized on the X2 Elite AI PC NPU vs original on the CPU, 500 observations | Largest difference: steer 0.020, throttle 0.036; mean 0.004 and 0.003 (tolerance 0.05) | [`path_a_accuracy_npu.json`](benchmarks/path_a_accuracy_npu.json) |
+| Quantized vs original, 500 observations, both on CPU (Mac) | Largest difference: steer 0.019, throttle 0.035 | [`path_a_accuracy_cpu.json`](benchmarks/path_a_accuracy_cpu.json) |
 | Test machine | Snapdragon X2 Elite (X2E88100), ONNX Runtime 1.30.0, onnxruntime-qnn 2.6.0 | [`session.json`](benchmarks/session.json) |
+
+Task Manager during a long `inference.py --no-serial` run shows the X2 Elite NPU at 99%
+utilization: [`docs/evidence/npu_task_manager.jpeg`](docs/evidence/npu_task_manager.jpeg).
 
 ### Qualcomm AI Hub, Snapdragon X Elite (cloud device)
 
@@ -173,8 +177,7 @@ is in [`docs/evidence/aihub_profile_buggy.png`](docs/evidence/aihub_profile_bugg
   writes for 16-bit activations. `profile_models` uploads a copy using the standard opset 21
   ops (outputs identical), and the record keeps the SHA-256 of the file the AI PC runs.
 
-Not measured yet: the quantized model's accuracy on the NPU, and a run driving the buggy
-over serial.
+Not measured yet: a run driving the buggy over serial.
 
 `python -m deployment.aihub_export.profile_models` writes AI Hub device-cloud profiles to
 `benchmarks/`, and the orchestrator serves them at `GET /benchmarks`.
@@ -239,7 +242,7 @@ tests/            pytest suite
   in-process
 - Path A: `Buggy.onnx` drove the physical buggy at the event
 - Path A training sources: Unity agent script and ML-Agents trainer configuration
-- Path A NPU build: one QNN kernel on the Hexagon NPU, latency and CPU accuracy measured
+- Path A NPU build: one QNN kernel on the Hexagon NPU, latency and accuracy measured on the NPU
 - Qualcomm AI Hub compile and profile of `Buggy.onnx` and the NPU build on Snapdragon X Elite
 - Path B validated in simulation
 - Dashboard: uses the live orchestrator, except the public demo on Vercel, which has no
@@ -247,7 +250,7 @@ tests/            pytest suite
 
 ### In progress
 
-- Path A NPU build driving the buggy over serial, and its accuracy measured on the NPU
+- Path A NPU build driving the buggy over serial
 - Calibration of the NPU build from recorded Unity observations
 
 ## Team

@@ -1,0 +1,34 @@
+{
+  "reference": {
+    "model_file": "Buggy.onnx",
+    "model_sha256": "de4baea3cfe9c7c130778b06da197f0f46ba9a05c69fe3eb348750f02743e95f",
+    "providers": [
+      "CPUExecutionProvider"
+    ]
+  },
+  "candidate": {
+    "model_file": "Buggy_fixed_qdq.onnx",
+    "model_sha256": "f9cc946d15b7310c075250a6b4d92c233e0657fe32f72954d6a1377db5abb3fe",
+    "providers": [
+      "QNNExecutionProvider",
+      "CPUExecutionProvider"
+    ]
+  },
+  "samples": 500,
+  "seed": 7,
+  "tolerance": 0.05,
+  "within_tolerance": true,
+  "actions": {
+    "steer": {
+      "max_abs_diff": 0.020449,
+      "mean_abs_diff": 0.003548
+    },
+    "throttle": {
+      "max_abs_diff": 0.035803,
+      "mean_abs_diff": 0.003251
+    }
+  },
+  "onnxruntime_version": "1.30.0",
+  "platform": "Windows-11-10.0.28000-SP0",
+  "timestamp": "2026-10-01T13:12:37+00:00"
+}
