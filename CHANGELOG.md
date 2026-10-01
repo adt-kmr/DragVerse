@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `twin/compare_models.py`: compares `Buggy_fixed_qdq.onnx` with `Buggy.onnx` on the same
   random observations, on the NPU or with `--cpu`. The CPU result is in
   `benchmarks/path_a_accuracy_cpu.json`.
+- `benchmarks/path_a_accuracy_npu.json`: the same comparison with `Buggy_fixed_qdq.onnx` on
+  the X2 Elite AI PC NPU, and a Task Manager screenshot of the NPU under load in
+  `docs/evidence/npu_task_manager.jpeg`.
 
 ### Changed
 
